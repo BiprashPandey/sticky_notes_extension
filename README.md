@@ -2,8 +2,9 @@
 
 A feature-rich Chrome extension (Manifest V3) that replaces the default `chrome://newtab/` page with a fully customizable personal dashboard:
 
-- **Wallpaper engine** — 12 built-in wallpapers (stored locally in `wallpapers/`), a 🎨 cycle button, an auto-cycle timer (Settings), and a thumbnail gallery for direct selection. Selection persists via `chrome.storage.local`.
-- **Translucent sticky notes** — frosted-glass notes in 6 translucent colors (🎨 cycles them); add, edit, collapse/expand, delete, and resize by dragging the corner handle (double-click to reset). Everything auto-saves.
+- **Wallpaper engine** — 12 built-in wallpapers (stored locally in `wallpapers/`) plus **14 dark/moody CSS gradient themes** that always work offline (now shown first in the gallery), a 🎨 cycle button, an auto-cycle timer (Settings), and a thumbnail gallery for direct selection. Selection persists via `chrome.storage.local`. The default wallpaper is the dark "Deep Space" gradient.
+- **Translucent sticky notes** — frosted-glass notes in 6 translucent colors; the **heading sits right in the top bar next to the 🎨 color picker and stays visible even when collapsed**. Add, edit, collapse/expand, delete, and resize by dragging the corner handle (double-click to reset). Everything auto-saves.
+- **To-do lists** — the **＋ To Dos** button adds a glass-themed, draggable checklist with its own **collapse/expand button and corner resize handle**: add tasks (Enter), tick them off (✓ circle), edit a task by clicking its text, delete individual tasks, rename or delete the whole list.
 - **Floating world clocks** — no central clock; add unlimited clock widgets and drag any of them anywhere (grab the widget body or header). Each offers 36 curated timezones or the full IANA list, and can be renamed. New clocks are auto-placed in a tidy row next to the existing ones.
 - **Google search bar** — glass pill that is itself draggable (grab its icon/edges; press `/` to focus it); Enter or the ↵ button searches Google in the current tab or a new tab (configurable in Settings).
 - **Free placement** — notes, clocks, and the search bar are all draggable individually. Positions persist as percentages, so everything stays put across reloads and window sizes.
@@ -39,7 +40,8 @@ sticky_notes_extension/
 | --- | --- |
 | Search | Type a query, press Enter — Google results open in the current tab. Change to "New tab" in Settings. Press `/` anywhere to jump to the search bar; drag the bar by its icon/edges to move it. |
 | Wallpaper | Click 🎨 to cycle; open Settings → Wallpaper to pick any thumbnail; set auto-cycle in Settings → Wallpaper auto-cycle. |
-| Sticky notes | Click **＋ Note**; type (auto-saves). Drag by the header. Cycle color with 🎨, collapse with `–`, delete with `✕`. Drag the bottom-right corner to resize (double-click the corner to restore the default size). |
+| Sticky notes | Click **＋ Note**; type a heading and body (auto-saves). Drag by the header. Cycle color with 🎨, collapse with `–` (title stays visible), delete with `✕`. Drag the bottom-right corner to resize (double-click the corner to restore the default size). |
+| To-do lists | Click **＋ To Dos** — a draggable glass checklist appears (drag by its header). Type a task and press Enter to add; click the circle to check/uncheck; click a task's text to edit it; use `–` to collapse the list; use ✕ to delete a task or the whole list. Drag the bottom-right corner to resize (double-click to reset). |
 | Clocks | Click **＋ Clock** — the new clock is auto-placed next to the previous ones; drag it anywhere by its body or header, pick a timezone (e.g. Kathmandu, Tokyo, UTC), rename it, delete with `✕`. |
 | Interface font | Settings → Interface font: change it and watch notes, clocks, + Note/+ Clock buttons, and the search bar all switch at once. |
 | Persistence | Reload the tab / close Chrome / open a second window — notes, clocks, wallpaper, and positions all survive. |

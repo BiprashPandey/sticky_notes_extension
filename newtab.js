@@ -34,6 +34,14 @@ const GRADIENT_WALLPAPERS = [
   { id: 'g4', name: 'Violet Storm', type: 'gradient', src: 'linear-gradient(135deg, #6a11cb, #2575fc)' },
   { id: 'g5', name: 'Crimson',      type: 'gradient', src: 'linear-gradient(135deg, #fc466b, #3f5efb)' },
   { id: 'g6', name: 'Graphite',     type: 'gradient', src: 'linear-gradient(160deg, #1f2937, #374151)' },
+  { id: 'g7', name: 'Deep Space',   type: 'gradient', src: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)' },
+  { id: 'g8', name: 'Slate Night',  type: 'gradient', src: 'linear-gradient(160deg, #0f172a, #1e293b, #334155)' },
+  { id: 'g9', name: 'Royal Black',  type: 'gradient', src: 'linear-gradient(160deg, #141e30, #243b55)' },
+  { id: 'g10', name: 'Abyss',       type: 'gradient', src: 'linear-gradient(160deg, #020111, #20124d, #0f0f1a)' },
+  { id: 'g11', name: 'Violet Dusk', type: 'gradient', src: 'linear-gradient(160deg, #1a1038, #3b2a5e)' },
+  { id: 'g12', name: 'Deep Emerald', type: 'gradient', src: 'linear-gradient(160deg, #052e1f, #0f4c33)' },
+  { id: 'g13', name: 'Ember Night', type: 'gradient', src: 'linear-gradient(160deg, #1c0b07, #4a1d10)' },
+  { id: 'g14', name: 'Ink',          type: 'gradient', src: 'linear-gradient(160deg, #000000, #1f2937)' },
 ];
 
 const LOCAL_SLOTS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
@@ -92,6 +100,7 @@ const els = {
   searchInput: document.getElementById('searchInput'),
   addNoteBtn: document.getElementById('addNoteBtn'),
   addClockBtn: document.getElementById('addClockBtn'),
+  addTodoBtn: document.getElementById('addTodoBtn'),
   cycleWallpaperBtn: document.getElementById('cycleWallpaperBtn'),
   settingsBtn: document.getElementById('settingsBtn'),
   settingsOverlay: document.getElementById('settingsOverlay'),
@@ -142,11 +151,12 @@ function freshState() {
       defaultNoteColor: 'yellow',
       cycleMinutes: 0,
     },
-    wallpaper: { id: null },
+    wallpaper: { id: 'g7' },
     searchPos: { x: 50, y: 3.2 },
     notes: [
       {
         id: uid(),
+        title: 'Welcome',
         text: 'Welcome to your dashboard!\n\nDrag this note by its header to move it around.\nChange its color, collapse or delete it from the header.\n\nTip: press / to search Google.',
         color: 'yellow',
         collapsed: false,
@@ -158,6 +168,7 @@ function freshState() {
       { id: uid(), timezone: 'America/New_York', label: 'New York' },
       { id: uid(), timezone: 'Asia/Kathmandu', label: 'Kathmandu' },
     ],
+    todos: [],
   };
 }
 
@@ -173,6 +184,7 @@ function mergeState(stored) {
     searchPos: Object.assign({}, base.searchPos, s.searchPos || {}),
     notes: Array.isArray(s.notes) ? s.notes.filter((n) => n && typeof n === 'object') : [],
     clocks: Array.isArray(s.clocks) ? s.clocks.filter((c) => c && typeof c === 'object') : [],
+    todos: Array.isArray(s.todos) ? s.todos.filter((t) => t && typeof t === 'object') : [],
   };
 }
 
@@ -200,7 +212,7 @@ async function detectLocalWallpapers() {
 
 async function buildWallpapers() {
   const local = await detectLocalWallpapers();
-  WALLPAPERS = [...local, ...REMOTE_WALLPAPERS, ...GRADIENT_WALLPAPERS];
+  WALLPAPERS = [...GRADIENT_WALLPAPERS, ...local, ...REMOTE_WALLPAPERS];
 }
 
 function wallpaperById(id) {
@@ -298,40 +310,186 @@ function clockParts(timezone) {
   return { time: f.time.format(now), date: f.date.format(now) };
 }
 
-function renderClocks() {
-  els.widgets.querySelectorAll('.clock').forEach((c) => c.remove());
-  clockEls.clear();
-  for (const clock of state.clocks) renderClock(clock);
-  if (state.clocks.some((c) => c.x === undefined || c.y === undefined)) layoutUnplacedClocks();
-}
-
-function layoutUnplacedClocks() {
+function layoutRow(items, getEl, startYFrac) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const gap = 16;
   const rowStart = vw * 0.28;
   const maxRight = vw * 0.96;
   let cursorX = rowStart;
-  let rowY = vh * 0.42;
+  let rowY = vh * startYFrac;
   let rowH = 0;
-  for (const c of state.clocks) {
-    const el = els.widgets.querySelector('.clock[data-clock-id="' + c.id + '"]');
-    const w = el ? el.getBoundingClientRect().width : 200;
-    const h = el ? el.getBoundingClientRect().height : 96;
+  for (const item of items) {
+    const el = getEl(item.id);
+    const w = el ? el.getBoundingClientRect().width : 220;
+    const h = el ? el.getBoundingClientRect().height : 100;
     rowH = Math.max(rowH, h);
     if (cursorX + w > maxRight && cursorX > rowStart) {
       cursorX = rowStart;
       rowY += rowH + gap;
       rowH = 0;
     }
-    if (c.x === undefined || c.y === undefined) {
-      c.x = Math.round((cursorX / vw) * 1000) / 10;
-      c.y = Math.round((rowY / vh) * 1000) / 10;
+    if (item.x === undefined || item.y === undefined) {
+      item.x = Math.round((cursorX / vw) * 1000) / 10;
+      item.y = Math.round((rowY / vh) * 1000) / 10;
     }
-    cursorX = (c.x / 100) * vw + w + gap;
+    cursorX = (item.x / 100) * vw + w + gap;
   }
+}
+
+function renderClocks() {
+  els.widgets.querySelectorAll('.clock').forEach((c) => c.remove());
+  clockEls.clear();
+  for (const clock of state.clocks) renderClock(clock);
+  if (state.clocks.some((c) => c.x === undefined || c.y === undefined)) {
+    layoutRow(state.clocks, (id) => els.widgets.querySelector('.clock[data-clock-id="' + id + '"]'), 0.42);
+    saveState();
+    renderClocks();
+  }
+}
+
+function renderTodos() {
+  els.widgets.querySelectorAll('.todo').forEach((t) => t.remove());
+  for (const todo of state.todos) renderTodo(todo);
+  if (state.todos.some((t) => t.x === undefined || t.y === undefined)) {
+    layoutRow(state.todos, (id) => els.widgets.querySelector('.todo[data-todo-id="' + id + '"]'), 0.76);
+    saveState();
+    renderTodos();
+  }
+}
+
+function renderTodo(todo) {
+  const el = document.createElement('div');
+  el.className = 'todo' + (todo.collapsed ? ' collapsed' : '') + (todo.h ? ' fixed' : '');
+  el.dataset.todoId = todo.id;
+  el.style.left = clampPct(todo.x) + '%';
+  el.style.top = clampPct(todo.y) + '%';
+  el.style.width = Math.max(200, todo.w || 260) + 'px';
+  if (todo.h) el.style.height = todo.h + 'px';
+
+  el.innerHTML =
+    '<div class="todo-header">' +
+      '<input class="todo-title" type="text" value="' + escapeHtml(todo.title || '') + '" placeholder="To-Dos" title="List name">' +
+      '<button type="button" class="icon-btn todo-collapse-btn" title="' + (todo.collapsed ? 'Expand' : 'Collapse') + '">' + (todo.collapsed ? '＋' : '–') + '</button>' +
+      '<button type="button" class="icon-btn todo-delete-btn" title="Delete list">✕</button>' +
+    '</div>' +
+    '<ul class="todo-list"></ul>' +
+    '<form class="todo-add">' +
+      '<input class="todo-input" type="text" placeholder="Add a task…" autocomplete="off">' +
+      '<button type="submit" class="todo-submit" title="Add task">＋</button>' +
+    '</form>' +
+    '<div class="todo-resize" title="Drag to resize — double-click to reset"></div>';
+
+  const listEl = el.querySelector('.todo-list');
+  const renderTasks = () => {
+    listEl.innerHTML = '';
+    for (const task of todo.tasks || []) renderTask(listEl, task, todo);
+  };
+  renderTasks();
+
+  el.querySelector('.todo-title').addEventListener('input', (e) => {
+    todo.title = e.target.value;
+    saveState();
+  });
+
+  const collapseBtn = el.querySelector('.todo-collapse-btn');
+  collapseBtn.addEventListener('click', () => {
+    todo.collapsed = !todo.collapsed;
+    el.classList.toggle('collapsed', todo.collapsed);
+    collapseBtn.textContent = todo.collapsed ? '＋' : '–';
+    collapseBtn.title = todo.collapsed ? 'Expand' : 'Collapse';
+    saveState();
+  });
+
+  el.querySelector('.todo-delete-btn').addEventListener('click', () => {
+    state.todos = state.todos.filter((t) => t.id !== todo.id);
+    el.remove();
+    saveState();
+  });
+
+  const resizeHandle = el.querySelector('.todo-resize');
+  makeResizable(el, resizeHandle, (w, h) => {
+    todo.w = Math.round(w);
+    todo.h = Math.round(h);
+    el.classList.add('fixed');
+    saveState();
+  });
+  resizeHandle.addEventListener('dblclick', () => {
+    delete todo.w;
+    delete todo.h;
+    el.style.width = '';
+    el.style.height = '';
+    el.classList.remove('fixed');
+    saveState();
+  });
+
+  el.querySelector('.todo-add').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = el.querySelector('.todo-input');
+    const text = input.value.trim();
+    if (!text) return;
+    if (!todo.tasks) todo.tasks = [];
+    todo.tasks.push({ id: uid(), text: text, done: false });
+    input.value = '';
+    renderTasks();
+    saveState();
+  });
+
+  makeDraggable(el, el.querySelector('.todo-header'), () => {
+    todo.x = pct(el.style.left);
+    todo.y = pct(el.style.top);
+    saveState();
+  });
+
+  els.widgets.appendChild(el);
+}
+
+function renderTask(listEl, task, todo) {
+  const li = document.createElement('li');
+  li.className = 'todo-item' + (task.done ? ' done' : '');
+  li.innerHTML =
+    '<button type="button" class="todo-check" title="' + (task.done ? 'Mark as not done' : 'Mark as done') + '">' + (task.done ? '✓' : '') + '</button>' +
+    '<span class="todo-text" contenteditable="true" spellcheck="false">' + escapeHtml(task.text) + '</span>' +
+    '<button type="button" class="icon-btn todo-item-del" title="Delete task">✕</button>';
+
+  li.querySelector('.todo-check').addEventListener('click', () => {
+    task.done = !task.done;
+    li.classList.toggle('done', task.done);
+    li.querySelector('.todo-check').textContent = task.done ? '✓' : '';
+    li.querySelector('.todo-check').title = task.done ? 'Mark as not done' : 'Mark as done';
+    saveState();
+  });
+
+  li.querySelector('.todo-item-del').addEventListener('click', () => {
+    todo.tasks = todo.tasks.filter((t) => t.id !== task.id);
+    li.remove();
+    saveState();
+  });
+
+  const span = li.querySelector('.todo-text');
+  span.addEventListener('blur', () => {
+    task.text = span.textContent.trim();
+    if (!task.text) {
+      todo.tasks = todo.tasks.filter((t) => t.id !== task.id);
+      li.remove();
+    }
+    saveState();
+  });
+  span.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      span.blur();
+    }
+  });
+
+  listEl.appendChild(li);
+}
+
+function addTodo() {
+  const todo = { id: uid(), title: '', tasks: [], collapsed: false };
+  state.todos.push(todo);
   saveState();
-  renderClocks();
+  renderTodos();
 }
 
 function renderClock(clock) {
@@ -411,7 +569,7 @@ function renderNote(note) {
   el.innerHTML =
     '<div class="note-header">' +
       '<button type="button" class="icon-btn note-color-btn" title="Change color">🎨</button>' +
-      '<span class="note-spacer"></span>' +
+      '<input class="note-title" type="text" value="' + escapeHtml(note.title || '') + '" placeholder="Note title">' +
       '<button type="button" class="icon-btn note-collapse-btn" title="' + (note.collapsed ? 'Expand' : 'Collapse') + '">' + (note.collapsed ? '＋' : '–') + '</button>' +
       '<button type="button" class="icon-btn note-delete-btn" title="Delete note">✕</button>' +
     '</div>' +
@@ -421,6 +579,11 @@ function renderNote(note) {
   const ta = el.querySelector('.note-text');
   if (note.h) ta.style.overflowY = 'auto';
   else autosize(ta);
+
+  el.querySelector('.note-title').addEventListener('input', (e) => {
+    note.title = e.target.value;
+    saveState();
+  });
 
   ta.addEventListener('input', () => {
     note.text = ta.value;
@@ -487,7 +650,7 @@ function makeDraggable(el, handle, onDrop) {
 
   handle.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
-    if (e.target.closest('button, select, input, textarea')) return;
+    if (e.target.closest('button, select, input, textarea, [contenteditable]')) return;
     dragging = true;
     rect = el.getBoundingClientRect();
     startX = e.clientX;
@@ -673,6 +836,7 @@ function syncSettingsUI() {
 function bindUi() {
   els.addNoteBtn.addEventListener('click', addNote);
   els.addClockBtn.addEventListener('click', addClock);
+  els.addTodoBtn.addEventListener('click', addTodo);
   els.cycleWallpaperBtn.addEventListener('click', nextWallpaper);
   els.settingsBtn.addEventListener('click', () => els.settingsOverlay.classList.add('open'));
   els.closeSettingsBtn.addEventListener('click', () => els.settingsOverlay.classList.remove('open'));
@@ -739,6 +903,7 @@ function renderEverything() {
   applySearchPos();
   renderNotes();
   renderClocks();
+  renderTodos();
   syncSettingsUI();
   restartCycleTimer();
   updateAllClocks();
