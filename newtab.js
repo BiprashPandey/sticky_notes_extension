@@ -3,10 +3,11 @@
 const STORAGE_KEY = 'dashboardStateV1';
 
 const FONTS = {
-  default: { label: 'Sans-Serif', stack: "'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif" },
-  serif:   { label: 'Serif',      stack: "Georgia, 'Times New Roman', serif" },
-  mono:    { label: 'Monospace',  stack: "'Cascadia Code', 'JetBrains Mono', 'Courier New', monospace" },
-  hand:    { label: 'Handwriting', stack: "'Segoe Print', 'Comic Sans MS', 'Bradley Hand', cursive" },
+  default: { label: 'JetBrains Mono', stack: "'JetBrains Mono', 'Cascadia Code', 'Courier New', monospace" },
+  mono:    { label: 'Monospace',      stack: "'JetBrains Mono', 'Cascadia Code', 'Courier New', monospace" },
+  sans:    { label: 'Sans-Serif',     stack: "'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif" },
+  serif:   { label: 'Serif',          stack: "Georgia, 'Times New Roman', serif" },
+  hand:    { label: 'Handwriting',    stack: "'Segoe Print', 'Comic Sans MS', 'Bradley Hand', cursive" },
 };
 
 const NOTE_COLORS = ['yellow', 'pink', 'green', 'blue', 'purple', 'orange'];
@@ -84,15 +85,9 @@ let allTz = null;
 const clockFormatters = new Map();
 const clockEls = new Map();
 
-const heroTimeFmt = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-const heroDateFmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-
 const els = {
   bgLayer: document.getElementById('bgLayer'),
   widgets: document.getElementById('widgets'),
-  heroClock: document.getElementById('heroClock'),
-  heroGreet: document.getElementById('heroGreet'),
-  heroDate: document.getElementById('heroDate'),
   searchForm: document.getElementById('searchForm'),
   searchInput: document.getElementById('searchInput'),
   addNoteBtn: document.getElementById('addNoteBtn'),
@@ -101,9 +96,8 @@ const els = {
   settingsBtn: document.getElementById('settingsBtn'),
   settingsOverlay: document.getElementById('settingsOverlay'),
   closeSettingsBtn: document.getElementById('closeSettingsBtn'),
-  nameInput: document.getElementById('nameInput'),
   searchModeRadios: document.querySelectorAll('input[name="searchMode"]'),
-  noteFontInput: document.getElementById('noteFontInput'),
+  fontInput: document.getElementById('fontInput'),
   cycleInput: document.getElementById('cycleInput'),
   wpGallery: document.getElementById('wpGallery'),
   exportBtn: document.getElementById('exportBtn'),
@@ -143,18 +137,17 @@ function freshState() {
   return {
     saveToken: 0,
     settings: {
-      name: '',
+      font: 'default',
       searchMode: 'currentTab',
-      defaultNoteFont: 'default',
       defaultNoteColor: 'yellow',
       cycleMinutes: 0,
     },
     wallpaper: { id: null },
+    searchPos: { x: 50, y: 3.2 },
     notes: [
       {
         id: uid(),
-        text: 'Welcome to your dashboard!\n\nDrag this note by its header to move it around.\nChange its font, color, collapse or delete it from the header.\n\nTip: press / to search Google.',
-        font: 'default',
+        text: 'Welcome to your dashboard!\n\nDrag this note by its header to move it around.\nChange its color, collapse or delete it from the header.\n\nTip: press / to search Google.',
         color: 'yellow',
         collapsed: false,
         x: 5,
@@ -162,8 +155,8 @@ function freshState() {
       },
     ],
     clocks: [
-      { id: uid(), timezone: 'America/New_York', label: 'New York', x: 66, y: 16 },
-      { id: uid(), timezone: 'Asia/Kathmandu', label: 'Kathmandu', x: 66, y: 44 },
+      { id: uid(), timezone: 'America/New_York', label: 'New York' },
+      { id: uid(), timezone: 'Asia/Kathmandu', label: 'Kathmandu' },
     ],
   };
 }
@@ -173,8 +166,11 @@ function mergeState(stored) {
   const s = stored && typeof stored === 'object' ? stored : {};
   return {
     saveToken: Number(s.saveToken) || 0,
-    settings: Object.assign({}, base.settings, s.settings || {}),
+    settings: Object.assign({}, base.settings, s.settings || {}, {
+      font: (s.settings && (s.settings.font || s.settings.defaultNoteFont)) || base.settings.font,
+    }),
     wallpaper: Object.assign({}, base.wallpaper, s.wallpaper || {}),
+    searchPos: Object.assign({}, base.searchPos, s.searchPos || {}),
     notes: Array.isArray(s.notes) ? s.notes.filter((n) => n && typeof n === 'object') : [],
     clocks: Array.isArray(s.clocks) ? s.clocks.filter((c) => c && typeof c === 'object') : [],
   };
@@ -306,11 +302,42 @@ function renderClocks() {
   els.widgets.querySelectorAll('.clock').forEach((c) => c.remove());
   clockEls.clear();
   for (const clock of state.clocks) renderClock(clock);
+  if (state.clocks.some((c) => c.x === undefined || c.y === undefined)) layoutUnplacedClocks();
+}
+
+function layoutUnplacedClocks() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const gap = 16;
+  const rowStart = vw * 0.28;
+  const maxRight = vw * 0.96;
+  let cursorX = rowStart;
+  let rowY = vh * 0.42;
+  let rowH = 0;
+  for (const c of state.clocks) {
+    const el = els.widgets.querySelector('.clock[data-clock-id="' + c.id + '"]');
+    const w = el ? el.getBoundingClientRect().width : 200;
+    const h = el ? el.getBoundingClientRect().height : 96;
+    rowH = Math.max(rowH, h);
+    if (cursorX + w > maxRight && cursorX > rowStart) {
+      cursorX = rowStart;
+      rowY += rowH + gap;
+      rowH = 0;
+    }
+    if (c.x === undefined || c.y === undefined) {
+      c.x = Math.round((cursorX / vw) * 1000) / 10;
+      c.y = Math.round((rowY / vh) * 1000) / 10;
+    }
+    cursorX = (c.x / 100) * vw + w + gap;
+  }
+  saveState();
+  renderClocks();
 }
 
 function renderClock(clock) {
   const el = document.createElement('div');
   el.className = 'clock';
+  el.dataset.clockId = clock.id;
   el.style.left = clampPct(clock.x) + '%';
   el.style.top = clampPct(clock.y) + '%';
 
@@ -351,7 +378,7 @@ function renderClock(clock) {
     saveState();
   });
 
-  makeDraggable(el, el.querySelector('.clock-header'), () => {
+  makeDraggable(el, el, () => {
     clock.x = pct(el.style.left);
     clock.y = pct(el.style.top);
     saveState();
@@ -378,34 +405,26 @@ function renderNote(note) {
   el.dataset.noteId = note.id;
   el.style.left = clampPct(note.x) + '%';
   el.style.top = clampPct(note.y) + '%';
-  el.style.fontFamily = (FONTS[note.font] || FONTS.default).stack;
-
-  const fontOptions = Object.entries(FONTS)
-    .map(([k, f]) => '<option value="' + k + '"' + (k === (note.font || 'default') ? ' selected' : '') + '>' + f.label + '</option>')
-    .join('');
+  el.style.width = Math.max(180, note.w || 280) + 'px';
+  if (note.h) el.style.height = note.h + 'px';
 
   el.innerHTML =
     '<div class="note-header">' +
-      '<select class="note-font-select" title="Note font">' + fontOptions + '</select>' +
       '<button type="button" class="icon-btn note-color-btn" title="Change color">🎨</button>' +
       '<span class="note-spacer"></span>' +
       '<button type="button" class="icon-btn note-collapse-btn" title="' + (note.collapsed ? 'Expand' : 'Collapse') + '">' + (note.collapsed ? '＋' : '–') + '</button>' +
       '<button type="button" class="icon-btn note-delete-btn" title="Delete note">✕</button>' +
     '</div>' +
-    '<textarea class="note-text" placeholder="Write something…">' + escapeHtml(note.text) + '</textarea>';
+    '<textarea class="note-text" placeholder="Write something…">' + escapeHtml(note.text) + '</textarea>' +
+    '<div class="note-resize" title="Drag to resize — double-click to reset"></div>';
 
   const ta = el.querySelector('.note-text');
-  autosize(ta);
+  if (note.h) ta.style.overflowY = 'auto';
+  else autosize(ta);
 
   ta.addEventListener('input', () => {
     note.text = ta.value;
-    autosize(ta);
-    saveState();
-  });
-
-  el.querySelector('.note-font-select').addEventListener('change', (e) => {
-    note.font = e.target.value;
-    el.style.fontFamily = FONTS[note.font].stack;
+    if (!note.h) autosize(ta);
     saveState();
   });
 
@@ -428,6 +447,24 @@ function renderNote(note) {
   el.querySelector('.note-delete-btn').addEventListener('click', () => {
     state.notes = state.notes.filter((n) => n.id !== note.id);
     el.remove();
+    saveState();
+  });
+
+  const resizeHandle = el.querySelector('.note-resize');
+  makeResizable(el, resizeHandle, (w, h) => {
+    note.w = Math.round(w);
+    note.h = Math.round(h);
+    ta.style.height = '';
+    ta.style.overflowY = 'auto';
+    saveState();
+  });
+  resizeHandle.addEventListener('dblclick', () => {
+    delete note.w;
+    delete note.h;
+    el.style.width = '';
+    el.style.height = '';
+    ta.style.overflowY = '';
+    autosize(ta);
     saveState();
   });
 
@@ -482,19 +519,51 @@ function makeDraggable(el, handle, onDrop) {
   handle.addEventListener('pointercancel', end);
 }
 
-/* ---------------- Hero / ticker ---------------- */
+function makeResizable(el, handle, onResize, opts) {
+  const minW = (opts && opts.minW) || 180;
+  const minH = (opts && opts.minH) || 120;
+  const maxW = (opts && opts.maxW) || 900;
+  let resizing = false;
+  let startX = 0;
+  let startY = 0;
+  let startW = 0;
+  let startH = 0;
 
-function updateGreeting() {
-  const h = new Date().getHours();
-  const part = h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Good night';
-  const name = (state.settings.name || '').trim();
-  els.heroGreet.textContent = name ? part + ', ' + name : part;
+  handle.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    resizing = true;
+    const r = el.getBoundingClientRect();
+    startW = r.width;
+    startH = r.height;
+    startX = e.clientX;
+    startY = e.clientY;
+    el.classList.add('dragging');
+    handle.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  handle.addEventListener('pointermove', (e) => {
+    if (!resizing) return;
+    const w = Math.min(Math.max(startW + (e.clientX - startX), minW), maxW);
+    const h = Math.min(Math.max(startH + (e.clientY - startY), minH), window.innerHeight - 60);
+    el.style.width = w + 'px';
+    el.style.height = h + 'px';
+    if (onResize) onResize(w, h);
+  });
+
+  const end = () => {
+    if (!resizing) return;
+    resizing = false;
+    el.classList.remove('dragging');
+  };
+
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
 }
 
+/* ---------------- Hero / ticker ---------------- */
+
 function updateAllClocks() {
-  const now = new Date();
-  els.heroClock.textContent = heroTimeFmt.format(now);
-  els.heroDate.textContent = heroDateFmt.format(now);
   for (const [id, clockEl] of clockEls) {
     const clock = state.clocks.find((c) => c.id === id);
     const p = clockParts(clock ? clock.timezone : 'UTC');
@@ -510,7 +579,6 @@ function addNote() {
   const note = {
     id: uid(),
     text: '',
-    font: state.settings.defaultNoteFont,
     color: state.settings.defaultNoteColor,
     collapsed: false,
     x: 6 + ((n * 2) % 22),
@@ -524,13 +592,10 @@ function addNote() {
 }
 
 function addClock() {
-  const n = state.clocks.length;
   const clock = {
     id: uid(),
     timezone: 'UTC',
     label: 'UTC',
-    x: 60 + ((n * 4) % 30),
-    y: 16 + ((n * 10) % 40),
   };
   state.clocks.push(clock);
   saveState();
@@ -555,10 +620,21 @@ function bindSearch() {
 
 /* ---------------- Settings ---------------- */
 
+function applyGlobalFont() {
+  const f = FONTS[state.settings.font] || FONTS.default;
+  document.documentElement.style.setProperty('--ui-font', f.stack);
+}
+
+function applySearchPos() {
+  const p = state.searchPos || { x: 50, y: 3.2 };
+  els.searchForm.style.left = p.x + '%';
+  els.searchForm.style.top = p.y + '%';
+}
+
 function bindSettings() {
-  els.nameInput.addEventListener('input', () => {
-    state.settings.name = els.nameInput.value;
-    updateGreeting();
+  els.fontInput.addEventListener('change', (e) => {
+    state.settings.font = e.target.value;
+    applyGlobalFont();
     saveState();
   });
 
@@ -569,11 +645,6 @@ function bindSettings() {
         saveState();
       }
     });
-  });
-
-  els.noteFontInput.addEventListener('change', (e) => {
-    state.settings.defaultNoteFont = e.target.value;
-    saveState();
   });
 
   els.cycleInput.addEventListener('change', (e) => {
@@ -592,11 +663,10 @@ function bindSettings() {
 }
 
 function syncSettingsUI() {
-  els.nameInput.value = state.settings.name || '';
+  els.fontInput.value = state.settings.font || 'default';
   els.searchModeRadios.forEach((r) => {
     r.checked = state.settings.searchMode === r.value;
   });
-  els.noteFontInput.value = state.settings.defaultNoteFont || 'default';
   els.cycleInput.value = String(state.settings.cycleMinutes || 0);
 }
 
@@ -608,6 +678,14 @@ function bindUi() {
   els.closeSettingsBtn.addEventListener('click', () => els.settingsOverlay.classList.remove('open'));
   els.settingsOverlay.addEventListener('click', (e) => {
     if (e.target === els.settingsOverlay) els.settingsOverlay.classList.remove('open');
+  });
+
+  makeDraggable(els.searchForm, els.searchForm, () => {
+    state.searchPos = {
+      x: pct(els.searchForm.style.left),
+      y: pct(els.searchForm.style.top),
+    };
+    saveState();
   });
 
   document.addEventListener('keydown', (e) => {
@@ -657,12 +735,13 @@ function resetData() {
 
 function renderEverything() {
   applyWallpaper(wallpaperById(state.wallpaper.id));
+  applyGlobalFont();
+  applySearchPos();
   renderNotes();
   renderClocks();
   syncSettingsUI();
   restartCycleTimer();
   updateAllClocks();
-  updateGreeting();
 }
 
 /* ---------------- Init ---------------- */
@@ -673,7 +752,7 @@ function renderEverything() {
   state = mergeState(stored[STORAGE_KEY]);
   if (!WALLPAPERS.some((w) => w.id === state.wallpaper.id)) state.wallpaper.id = WALLPAPERS[0].id;
 
-  els.noteFontInput.innerHTML = Object.entries(FONTS)
+  els.fontInput.innerHTML = Object.entries(FONTS)
     .map(([k, f]) => '<option value="' + k + '">' + f.label + '</option>')
     .join('');
 

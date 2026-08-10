@@ -1,4 +1,13 @@
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('fonts/JetBrainsMono.woff2') format('woff2');
+}
+
 :root {
+  --ui-font: 'JetBrains Mono', 'Cascadia Code', 'Courier New', monospace;
   --text: #f8fafc;
   --text-dim: rgba(248, 250, 252, 0.72);
   --glass: rgba(255, 255, 255, 0.09);
@@ -23,7 +32,7 @@ body {
 }
 
 body {
-  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--ui-font);
   color: var(--text);
   background: #0b1220;
   opacity: 0;
@@ -110,6 +119,7 @@ body.ready {
   background: var(--glass-strong);
   backdrop-filter: blur(16px) saturate(1.3);
   color: var(--text);
+  font-family: var(--ui-font);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -132,6 +142,11 @@ body.ready {
 /* ---------- Search bar ---------- */
 
 .search-form {
+  position: fixed;
+  left: 50%;
+  top: 26px;
+  transform: translateX(-50%);
+  z-index: 15;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -144,6 +159,8 @@ body.ready {
   box-shadow: var(--shadow);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
 }
 
 .search-form:focus-within {
@@ -165,6 +182,7 @@ body.ready {
   outline: none;
   background: transparent;
   color: var(--text);
+  font-family: var(--ui-font);
   font-size: 15px;
 }
 
@@ -180,6 +198,7 @@ body.ready {
   border-radius: 50%;
   background: var(--accent);
   color: #0b1220;
+  font-family: var(--ui-font);
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
@@ -192,43 +211,6 @@ body.ready {
 
 .search-btn:active {
   transform: scale(0.92);
-}
-
-/* ---------- Hero clock ---------- */
-
-.hero {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  pointer-events: none;
-  padding-bottom: 6vh;
-}
-
-.hero-clock {
-  font-size: clamp(62px, 10vw, 108px);
-  font-weight: 200;
-  letter-spacing: 3px;
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 4px 28px rgba(2, 6, 23, 0.5);
-}
-
-.hero-greet {
-  font-size: clamp(19px, 2.6vw, 27px);
-  font-weight: 500;
-  text-shadow: 0 2px 14px rgba(2, 6, 23, 0.55);
-}
-
-.hero-date {
-  font-size: 13px;
-  letter-spacing: 2.2px;
-  text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.82);
-  text-shadow: 0 2px 10px rgba(2, 6, 23, 0.5);
 }
 
 /* ---------- Widgets (clocks + notes) ---------- */
@@ -254,7 +236,6 @@ body.ready {
   touch-action: none;
 }
 
-.dragging,
 .dragging * {
   user-select: none;
 }
@@ -281,7 +262,7 @@ body.ready {
 
 .icon-btn:hover {
   opacity: 1;
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .note-spacer {
@@ -295,19 +276,22 @@ body.ready {
   max-width: 88vw;
   display: flex;
   flex-direction: column;
-  border-radius: 11px;
+  border-radius: 14px;
   background: var(--paper);
   color: var(--ink);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(16px) saturate(1.35);
   box-shadow: var(--shadow);
-  --paper: #fde68a;
-  --ink: #1f2937;
+  font-family: var(--ui-font);
+  --paper: rgba(250, 204, 21, 0.26);
+  --ink: #f8fafc;
 }
 
-.note.color-pink   { --paper: #f9a8d4; }
-.note.color-green  { --paper: #86efac; }
-.note.color-blue   { --paper: #93c5fd; }
-.note.color-purple { --paper: #c4b5fd; }
-.note.color-orange { --paper: #fdba74; }
+.note.color-pink   { --paper: rgba(244, 114, 182, 0.26); }
+.note.color-green  { --paper: rgba(74, 222, 128, 0.26); }
+.note.color-blue   { --paper: rgba(96, 165, 250, 0.26); }
+.note.color-purple { --paper: rgba(167, 139, 250, 0.26); }
+.note.color-orange { --paper: rgba(251, 146, 60, 0.26); }
 
 .note.collapsed {
   width: 240px;
@@ -318,24 +302,14 @@ body.ready {
   align-items: center;
   gap: 5px;
   padding: 7px 9px;
-  border-radius: 11px 11px 0 0;
-  background: rgba(0, 0, 0, 0.08);
+  border-radius: 14px 14px 0 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .note.collapsed .note-header {
-  border-radius: 11px;
-}
-
-.note-font-select {
-  max-width: 96px;
-  border: none;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.1);
-  color: inherit;
-  font-size: 11px;
-  padding: 3px 4px;
-  cursor: pointer;
-  outline: none;
+  border-radius: 14px;
+  border-bottom: none;
 }
 
 .note-text {
@@ -350,27 +324,71 @@ body.ready {
   line-height: 1.55;
   padding: 11px 13px;
   min-height: 120px;
+  overflow-y: hidden;
 }
 
 .note-text::placeholder {
   color: var(--ink);
-  opacity: 0.45;
+  opacity: 0.5;
 }
 
 .note.collapsed .note-text {
   display: none;
 }
 
+.note-resize {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.note-resize::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  border-radius: 0 0 4px 0;
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.note-resize:hover::after {
+  opacity: 1;
+}
+
+.note.collapsed .note-resize {
+  display: none;
+}
+
 /* ---------- Clock widgets ---------- */
 
 .clock {
-  min-width: 236px;
-  padding: 13px 16px 15px;
+  position: absolute;
+  min-width: 200px;
+  padding: 11px 14px 13px;
   border-radius: var(--radius);
   border: 1px solid var(--glass-border);
   background: var(--glass-strong);
   backdrop-filter: blur(18px) saturate(1.35);
   box-shadow: var(--shadow);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  font-family: var(--ui-font);
+}
+
+.clock-label,
+.tz-select {
+  font-family: var(--ui-font);
 }
 
 .clock-header {
@@ -395,23 +413,23 @@ body.ready {
 }
 
 .clock-time {
-  margin-top: 6px;
-  font-size: 34px;
+  margin-top: 5px;
+  font-size: 29px;
   font-weight: 600;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 2px 12px rgba(2, 6, 23, 0.45);
 }
 
 .clock-date {
   margin-top: 1px;
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-dim);
 }
 
 .tz-select {
   width: 100%;
-  margin-top: 11px;
+  margin-top: 9px;
   border: 1px solid var(--glass-border);
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.75);
@@ -500,6 +518,12 @@ body.ready {
   color: var(--text-dim);
 }
 
+.field-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
 .text-input,
 .select-input {
   width: 100%;
@@ -507,6 +531,7 @@ body.ready {
   border-radius: 9px;
   background: rgba(2, 6, 23, 0.45);
   color: var(--text);
+  font-family: var(--ui-font);
   font-size: 14px;
   padding: 10px 12px;
   outline: none;
@@ -619,6 +644,7 @@ body.ready {
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
+  font-family: var(--ui-font);
   font-size: 13px;
   font-weight: 500;
   padding: 9px 0;
@@ -644,9 +670,5 @@ body.ready {
 
   .search-form {
     width: min(420px, 52vw);
-  }
-
-  .hero-clock {
-    font-size: clamp(52px, 14vw, 76px);
   }
 }

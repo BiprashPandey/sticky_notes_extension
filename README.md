@@ -3,22 +3,24 @@
 A feature-rich Chrome extension (Manifest V3) that replaces the default `chrome://newtab/` page with a fully customizable personal dashboard:
 
 - **Wallpaper engine** — 12 built-in wallpapers (stored locally in `wallpapers/`), a 🎨 cycle button, an auto-cycle timer (Settings), and a thumbnail gallery for direct selection. Selection persists via `chrome.storage.local`.
-- **Sticky notes** — add, edit, collapse/expand, delete, change color (🎨), and choose a font per note (Sans-Serif / Serif / Monospace / Handwriting). Everything auto-saves.
-- **World clocks** — add unlimited clocks, pick from 36 curated timezones or the full IANA list, rename them, and drag them anywhere.
-- **Google search bar** — top-center glass pill; Enter or the ↵ button searches Google in the current tab or a new tab (configurable in Settings). Press `/` to focus it.
-- **Free placement** — notes and clocks are draggable by their header and positions persist as percentages, so they stay put across reloads and window sizes.
-- **Extras** — local hero clock with greeting (custom name in Settings), multi-window sync, export/import/reset of all data.
+- **Translucent sticky notes** — frosted-glass notes in 6 translucent colors (🎨 cycles them); add, edit, collapse/expand, delete, and resize by dragging the corner handle (double-click to reset). Everything auto-saves.
+- **Floating world clocks** — no central clock; add unlimited clock widgets and drag any of them anywhere (grab the widget body or header). Each offers 36 curated timezones or the full IANA list, and can be renamed. New clocks are auto-placed in a tidy row next to the existing ones.
+- **Google search bar** — glass pill that is itself draggable (grab its icon/edges; press `/` to focus it); Enter or the ↵ button searches Google in the current tab or a new tab (configurable in Settings).
+- **Free placement** — notes, clocks, and the search bar are all draggable individually. Positions persist as percentages, so everything stays put across reloads and window sizes.
+- **Global JetBrains Mono font** — the bundled variable font (100–800 weights, `fonts/JetBrainsMono.woff2`) is applied to every element: notes, clocks, + Note/+ Clock buttons, the search bar, and settings. The Settings → Interface font picker switches all of them at once.
+- **Extras** — multi-window sync, export/import/reset of all data.
 
 ## File structure
 
 ```
 sticky_notes_extension/
 ├── manifest.json              # MV3 config: chrome_url_overrides + storage permission
-├── newtab.html                # Search bar, hero clock, widget containers, settings drawer
+├── newtab.html                # Search bar, widget containers, settings drawer
 ├── newtab.css                 # Glassmorphism UI, sticky notes, clock widgets, gallery
 ├── newtab.js                  # State, storage, drag & drop, timezone math, search
 ├── icons/                     # Generated extension icons (16/48/128)
 ├── wallpapers/                # 12 local wallpapers (already downloaded)
+├── fonts/                     # Bundled JetBrains Mono variable font (offline-safe)
 ├── generate-icons.ps1         # Regenerates icons (PowerShell, no deps)
 └── download-wallpapers.ps1    # Re-downloads wallpapers into wallpapers/
 ```
@@ -35,10 +37,11 @@ sticky_notes_extension/
 
 | Feature | How to test |
 | --- | --- |
-| Search | Type a query, press Enter — Google results open in the current tab. Change to "New tab" in Settings. Press `/` anywhere to jump to the search bar. |
+| Search | Type a query, press Enter — Google results open in the current tab. Change to "New tab" in Settings. Press `/` anywhere to jump to the search bar; drag the bar by its icon/edges to move it. |
 | Wallpaper | Click 🎨 to cycle; open Settings → Wallpaper to pick any thumbnail; set auto-cycle in Settings → Wallpaper auto-cycle. |
-| Sticky notes | Click **＋ Note**; type (auto-saves). Drag by the header. Change font via the dropdown, cycle color with 🎨, collapse with `–`, delete with `✕`. |
-| Clocks | Click **＋ Clock**; pick a timezone (e.g. Kathmandu, Tokyo, UTC), rename it, drag it into place. |
+| Sticky notes | Click **＋ Note**; type (auto-saves). Drag by the header. Cycle color with 🎨, collapse with `–`, delete with `✕`. Drag the bottom-right corner to resize (double-click the corner to restore the default size). |
+| Clocks | Click **＋ Clock** — the new clock is auto-placed next to the previous ones; drag it anywhere by its body or header, pick a timezone (e.g. Kathmandu, Tokyo, UTC), rename it, delete with `✕`. |
+| Interface font | Settings → Interface font: change it and watch notes, clocks, + Note/+ Clock buttons, and the search bar all switch at once. |
 | Persistence | Reload the tab / close Chrome / open a second window — notes, clocks, wallpaper, and positions all survive. |
 | Data | Settings → Data: Export downloads a JSON backup; Import restores it; Reset wipes everything. |
 

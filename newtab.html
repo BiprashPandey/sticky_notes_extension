@@ -17,26 +17,20 @@
       <button type="button" class="tool-btn" id="addClockBtn" title="Add a world clock"><span class="tool-ico">＋</span><span class="tl">Clock</span></button>
     </div>
 
-    <form class="search-form" id="searchForm" autocomplete="off" spellcheck="false">
-      <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
-        <circle cx="11" cy="11" r="7"></circle>
-        <path d="m20 20-3.5-3.5"></path>
-      </svg>
-      <input class="search-input" id="searchInput" type="text" placeholder="Search Google or type a URL">
-      <button type="submit" class="search-btn" title="Search">↵</button>
-    </form>
-
     <div class="tool-group">
       <button type="button" class="tool-btn" id="cycleWallpaperBtn" title="Next wallpaper">🎨</button>
       <button type="button" class="tool-btn" id="settingsBtn" title="Dashboard settings">⚙</button>
     </div>
   </header>
 
-  <main class="hero">
-    <div class="hero-clock" id="heroClock">--:--</div>
-    <div class="hero-greet" id="heroGreet"></div>
-    <div class="hero-date" id="heroDate"></div>
-  </main>
+  <form class="search-form" id="searchForm" autocomplete="off" spellcheck="false" title="Drag to move — press / to focus">
+    <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"></circle>
+      <path d="m20 20-3.5-3.5"></path>
+    </svg>
+    <input class="search-input" id="searchInput" type="text" placeholder="Search Google or type a URL">
+    <button type="submit" class="search-btn" title="Search">↵</button>
+  </form>
 
   <div class="widgets" id="widgets"></div>
 
@@ -48,8 +42,9 @@
       </div>
 
       <section class="field-group">
-        <label class="field-label" for="nameInput">Greeting name</label>
-        <input class="text-input" id="nameInput" type="text" placeholder="e.g. Alex" autocomplete="off">
+        <label class="field-label" for="fontInput">Interface font</label>
+        <select class="select-input" id="fontInput"></select>
+        <p class="field-hint">Applies to every widget at once: notes, clocks, and buttons.</p>
       </section>
 
       <section class="field-group">
@@ -58,11 +53,6 @@
           <label><input type="radio" name="searchMode" value="currentTab"> This tab</label>
           <label><input type="radio" name="searchMode" value="newTab"> New tab</label>
         </div>
-      </section>
-
-      <section class="field-group">
-        <label class="field-label" for="noteFontInput">Default font for new notes</label>
-        <select class="select-input" id="noteFontInput"></select>
       </section>
 
       <section class="field-group">
