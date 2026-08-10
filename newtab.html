@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Tab</title>
+  <link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+
+  <div class="bg-layer" id="bgLayer"></div>
+  <div class="bg-veil"></div>
+
+  <header class="topbar">
+    <div class="tool-group">
+      <button type="button" class="tool-btn" id="addNoteBtn" title="Add a sticky note"><span class="tool-ico">＋</span><span class="tl">Note</span></button>
+      <button type="button" class="tool-btn" id="addClockBtn" title="Add a world clock"><span class="tool-ico">＋</span><span class="tl">Clock</span></button>
+    </div>
+
+    <form class="search-form" id="searchForm" autocomplete="off" spellcheck="false">
+      <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="m20 20-3.5-3.5"></path>
+      </svg>
+      <input class="search-input" id="searchInput" type="text" placeholder="Search Google or type a URL">
+      <button type="submit" class="search-btn" title="Search">↵</button>
+    </form>
+
+    <div class="tool-group">
+      <button type="button" class="tool-btn" id="cycleWallpaperBtn" title="Next wallpaper">🎨</button>
+      <button type="button" class="tool-btn" id="settingsBtn" title="Dashboard settings">⚙</button>
+    </div>
+  </header>
+
+  <main class="hero">
+    <div class="hero-clock" id="heroClock">--:--</div>
+    <div class="hero-greet" id="heroGreet"></div>
+    <div class="hero-date" id="heroDate"></div>
+  </main>
+
+  <div class="widgets" id="widgets"></div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <aside class="settings-panel" id="settingsPanel" aria-label="Dashboard settings">
+      <div class="panel-head">
+        <h2>Dashboard settings</h2>
+        <button type="button" class="icon-btn" id="closeSettingsBtn" title="Close">✕</button>
+      </div>
+
+      <section class="field-group">
+        <label class="field-label" for="nameInput">Greeting name</label>
+        <input class="text-input" id="nameInput" type="text" placeholder="e.g. Alex" autocomplete="off">
+      </section>
+
+      <section class="field-group">
+        <span class="field-label">Google search opens in</span>
+        <div class="radio-row">
+          <label><input type="radio" name="searchMode" value="currentTab"> This tab</label>
+          <label><input type="radio" name="searchMode" value="newTab"> New tab</label>
+        </div>
+      </section>
+
+      <section class="field-group">
+        <label class="field-label" for="noteFontInput">Default font for new notes</label>
+        <select class="select-input" id="noteFontInput"></select>
+      </section>
+
+      <section class="field-group">
+        <label class="field-label" for="cycleInput">Wallpaper auto-cycle</label>
+        <select class="select-input" id="cycleInput">
+          <option value="0">Off</option>
+          <option value="5">Every 5 minutes</option>
+          <option value="15">Every 15 minutes</option>
+          <option value="30">Every 30 minutes</option>
+          <option value="60">Every hour</option>
+        </select>
+      </section>
+
+      <section class="field-group">
+        <span class="field-label">Wallpaper</span>
+        <div class="wp-gallery" id="wpGallery"></div>
+      </section>
+
+      <section class="field-group">
+        <span class="field-label">Data</span>
+        <div class="btn-row">
+          <button type="button" class="ghost-btn" id="exportBtn">Export</button>
+          <button type="button" class="ghost-btn" id="importBtn">Import</button>
+          <button type="button" class="ghost-btn danger" id="resetBtn">Reset</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <script src="newtab.js"></script>
+</body>
+</html>
