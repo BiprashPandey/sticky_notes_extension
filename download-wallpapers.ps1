@@ -12,7 +12,19 @@ $wallpapers = @(
   @{ Name = '09'; Url = 'https://images.unsplash.com/photo-1518546305927-5a555bb7020d?auto=format&fit=crop&w=1920&q=80' },
   @{ Name = '10'; Url = 'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=1920&q=80' },
   @{ Name = '11'; Url = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1920&q=80' },
-  @{ Name = '12'; Url = 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1920&q=80' }
+  @{ Name = '12'; Url = 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '13'; Url = 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '14'; Url = 'https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '15'; Url = 'https://images.unsplash.com/photo-1431411207774-da3c9611fd95?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '16'; Url = 'https://images.unsplash.com/photo-1477346611705-65d1883cee1e?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '17'; Url = 'https://images.unsplash.com/photo-1419833173245-f59e1b93f9ee?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '18'; Url = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '19'; Url = 'https://images.unsplash.com/photo-1504893524553-b855bce32c67?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '20'; Url = 'https://images.unsplash.com/photo-1502134249126-9f3755a50d78?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '21'; Url = 'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '22'; Url = 'https://images.unsplash.com/photo-1500530855697-b586dba89ee3?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '23'; Url = 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?auto=format&fit=crop&w=1920&q=80' },
+  @{ Name = '24'; Url = 'https://images.unsplash.com/photo-1447433589675-4aaa569f3e05?auto=format&fit=crop&w=1920&q=80' }
 )
 
 New-Item -ItemType Directory -Force -Path 'wallpapers' | Out-Null

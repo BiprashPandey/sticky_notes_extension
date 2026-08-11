@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Personal Dashboard — New Tab",
   "version": "1.0.0",
-  "description": "Replace the default New Tab page with a customizable dashboard: wallpapers, sticky notes, world clocks, and Google search.",
+  "description": "Replace the default New Tab page with a customizable dashboard: wallpapers, sticky notes, world clocks, quotes, to-do lists, and Google search.",
   "minimum_chrome_version": "102",
   "chrome_url_overrides": {
     "newtab": "newtab.html"

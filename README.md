@@ -2,12 +2,13 @@
 
 A feature-rich Chrome extension (Manifest V3) that replaces the default `chrome://newtab/` page with a fully customizable personal dashboard:
 
-- **Wallpaper engine** — 12 built-in wallpapers (stored locally in `wallpapers/`) plus **14 dark/moody CSS gradient themes** that always work offline (now shown first in the gallery), a 🎨 cycle button, an auto-cycle timer (Settings), and a thumbnail gallery for direct selection. Selection persists via `chrome.storage.local`. The default wallpaper is the dark "Deep Space" gradient.
-- **Translucent sticky notes** — frosted-glass notes in 6 translucent colors; the **heading sits right in the top bar next to the 🎨 color picker and stays visible even when collapsed**. Add, edit, collapse/expand, delete, and resize by dragging the corner handle (double-click to reset). Everything auto-saves.
-- **To-do lists** — the **＋ To Dos** button adds a glass-themed, draggable checklist with its own **collapse/expand button and corner resize handle**: add tasks (Enter), tick them off (✓ circle), edit a task by clicking its text, delete individual tasks, rename or delete the whole list.
-- **Floating world clocks** — no central clock; add unlimited clock widgets and drag any of them anywhere (grab the widget body or header). Each offers 36 curated timezones or the full IANA list, and can be renamed. New clocks are auto-placed in a tidy row next to the existing ones.
-- **Google search bar** — glass pill that is itself draggable (grab its icon/edges; press `/` to focus it); Enter or the ↵ button searches Google in the current tab or a new tab (configurable in Settings).
-- **Free placement** — notes, clocks, and the search bar are all draggable individually. Positions persist as percentages, so everything stays put across reloads and window sizes.
+- **Wallpaper engine** — 24 built-in wallpapers (stored locally in `wallpapers/`) plus **26 dark/moody image themes and 14 dark CSS gradient themes** that always work offline (now shown first in the gallery), a 🎨 cycle button, an auto-cycle timer (Settings), and a thumbnail gallery for direct selection. Selection persists via `chrome.storage.local`. The default wallpaper is the dark "Deep Space" gradient.
+- **Translucent sticky notes** — frosted-glass notes in 6 translucent colors; the **heading sits right in the top bar next to the 🎨 color picker and stays visible even when collapsed**. Add, edit, collapse/expand, delete, and resize by dragging the corner handle (double-click to reset). The body is **rich text**: select text and use the **B / I / U / S** bar (or Ctrl+B/I/U) for bold, italic, underline, and strikethrough. **📌 Pin locks a note's position and size in place.** Everything auto-saves.
+- **To-do lists** — the **＋ To Dos** button adds a glass-themed, draggable checklist with its own **collapse/expand button and corner resize handle**: add tasks (Enter), tick them off (✓ circle), edit a task by clicking its text, delete individual tasks, rename or delete the whole list. Grab the widget body anywhere to drag it, just like clocks; **📌 pin locks it down.**
+- **Quotes** — the **＋ Quote** button adds a glass quote card matching the to-do and clock style: click the text to write your own quote and add an attribution, collapse or delete it, drag it anywhere, resize it via the bottom-right corner (double-click to reset), or **📌 pin it.**
+- **Floating world clocks** — no central clock; add unlimited clock widgets and drag any of them anywhere (grab the widget body or header), or **📌 pin them** to freeze their spot. Each offers 36 curated timezones or the full IANA list, and can be renamed. New clocks are auto-placed in a tidy row next to the existing ones.
+- **Google search bar** — glass pill that is itself draggable (grab its icon/edges; press `/` to focus it); a 📌 button pins it in place. Enter or the ↵ button searches Google in the current tab or a new tab (configurable in Settings).
+- **Free placement** — notes, clocks, quotes, to-do lists, and the search bar are all draggable individually (use 📌 to lock any of them). Positions are stored as **viewport ratios (percentages)**, so layout scales with the window; everything is clamped to stay fully on-screen and re-clamped live when you resize the tab. Widget widths, paddings, gaps, and fonts use `vw`/`vh`/`clamp()` units, so the whole dashboard scales proportionally from a laptop to a large monitor. Widget sizes you set manually (resize handle) are kept in pixels as-is.
 - **Global JetBrains Mono font** — the bundled variable font (100–800 weights, `fonts/JetBrainsMono.woff2`) is applied to every element: notes, clocks, + Note/+ Clock buttons, the search bar, and settings. The Settings → Interface font picker switches all of them at once.
 - **Extras** — multi-window sync, export/import/reset of all data.
 
@@ -20,7 +21,7 @@ sticky_notes_extension/
 ├── newtab.css                 # Glassmorphism UI, sticky notes, clock widgets, gallery
 ├── newtab.js                  # State, storage, drag & drop, timezone math, search
 ├── icons/                     # Generated extension icons (16/48/128)
-├── wallpapers/                # 12 local wallpapers (already downloaded)
+├── wallpapers/                # 24 local wallpapers (already downloaded)
 ├── fonts/                     # Bundled JetBrains Mono variable font (offline-safe)
 ├── generate-icons.ps1         # Regenerates icons (PowerShell, no deps)
 └── download-wallpapers.ps1    # Re-downloads wallpapers into wallpapers/
@@ -38,11 +39,12 @@ sticky_notes_extension/
 
 | Feature | How to test |
 | --- | --- |
-| Search | Type a query, press Enter — Google results open in the current tab. Change to "New tab" in Settings. Press `/` anywhere to jump to the search bar; drag the bar by its icon/edges to move it. |
+| Search | Type a query, press Enter — Google results open in the current tab. Change to "New tab" in Settings. Press `/` anywhere to jump to the search bar; drag the bar by its icon/edges to move it; click 📌 to pin it. |
 | Wallpaper | Click 🎨 to cycle; open Settings → Wallpaper to pick any thumbnail; set auto-cycle in Settings → Wallpaper auto-cycle. |
-| Sticky notes | Click **＋ Note**; type a heading and body (auto-saves). Drag by the header. Cycle color with 🎨, collapse with `–` (title stays visible), delete with `✕`. Drag the bottom-right corner to resize (double-click the corner to restore the default size). |
-| To-do lists | Click **＋ To Dos** — a draggable glass checklist appears (drag by its header). Type a task and press Enter to add; click the circle to check/uncheck; click a task's text to edit it; use `–` to collapse the list; use ✕ to delete a task or the whole list. Drag the bottom-right corner to resize (double-click to reset). |
-| Clocks | Click **＋ Clock** — the new clock is auto-placed next to the previous ones; drag it anywhere by its body or header, pick a timezone (e.g. Kathmandu, Tokyo, UTC), rename it, delete with `✕`. |
+| Sticky notes | Click **＋ Note**; type a heading and body (auto-saves). Select body text and press **B/I/U/S** to format it, or use Ctrl+B/Ctrl+I/Ctrl+U. Drag by the header. Cycle color with 🎨, collapse with `–` (title stays visible), delete with `✕`. Drag the bottom-right corner to resize (double-click the corner to restore the default size). Click **📌** to pin — position and size stay locked. |
+| To-do lists | Click **＋ To Dos** — a draggable glass checklist appears (drag it anywhere, like a clock). Type a task and press Enter to add; click the circle to check/uncheck; click a task's text to edit it; use `–` to collapse the list; use ✕ to delete a task or the whole list. Drag the bottom-right corner to resize (double-click to reset); click **📌** to pin. |
+| Quotes | Click **＋ Quote** — a glass quote card appears; click its text to write your own quote (or keep the sample), type an attribution below it, collapse with `–`, delete with `✕`, and drag it anywhere. Drag the bottom-right corner to resize (double-click to reset); click **📌** to pin. |
+| Clocks | Click **＋ Clock** — the new clock is auto-placed next to the previous ones; drag it anywhere by its body or header (or **📌** pin it), pick a timezone (e.g. Kathmandu, Tokyo, UTC), rename it, delete with `✕`. |
 | Interface font | Settings → Interface font: change it and watch notes, clocks, + Note/+ Clock buttons, and the search bar all switch at once. |
 | Persistence | Reload the tab / close Chrome / open a second window — notes, clocks, wallpaper, and positions all survive. |
 | Data | Settings → Data: Export downloads a JSON backup; Import restores it; Reset wipes everything. |

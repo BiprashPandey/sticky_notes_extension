@@ -12,6 +12,13 @@ const FONTS = {
 
 const NOTE_COLORS = ['yellow', 'pink', 'green', 'blue', 'purple', 'orange'];
 
+const QUOTE_DEFAULTS = [
+  { text: 'The best way to predict the future is to invent it.', author: 'Alan Kay' },
+  { text: 'In the middle of difficulty lies opportunity.', author: 'Albert Einstein' },
+  { text: 'It always seems impossible until it is done.', author: 'Nelson Mandela' },
+  { text: 'Simplicity is the ultimate sophistication.', author: 'Leonardo da Vinci' },
+];
+
 const REMOTE_WALLPAPERS = [
   { id: 'u1',  name: 'Alpine Dawn',     type: 'image', src: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1920&q=80' },
   { id: 'u2',  name: 'Misty Highlands', type: 'image', src: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80' },
@@ -25,6 +32,18 @@ const REMOTE_WALLPAPERS = [
   { id: 'u10', name: 'Minimal Ridge',   type: 'image', src: 'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=1920&q=80' },
   { id: 'u11', name: 'Spectrum',        type: 'image', src: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1920&q=80' },
   { id: 'u12', name: 'Deep Field',      type: 'image', src: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u13', name: 'Milky Way',       type: 'image', src: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u14', name: 'Night Sky',       type: 'image', src: 'https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u15', name: 'Starry Ridge',    type: 'image', src: 'https://images.unsplash.com/photo-1431411207774-da3c9611fd95?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u16', name: 'Misty Forest',    type: 'image', src: 'https://images.unsplash.com/photo-1477346611705-65d1883cee1e?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u17', name: 'Foggy Pines',     type: 'image', src: 'https://images.unsplash.com/photo-1419833173245-f59e1b93f9ee?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u18', name: 'Blue Planet',     type: 'image', src: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u19', name: 'Violet Dawn',     type: 'image', src: 'https://images.unsplash.com/photo-1504893524553-b855bce32c67?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u20', name: 'Aurora Night',    type: 'image', src: 'https://images.unsplash.com/photo-1502134249126-9f3755a50d78?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u21', name: 'Dark Alpine',     type: 'image', src: 'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u22', name: 'Midnight Lake',   type: 'image', src: 'https://images.unsplash.com/photo-1500530855697-b586dba89ee3?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u23', name: 'Black Tide',      type: 'image', src: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?auto=format&fit=crop&w=1920&q=80' },
+  { id: 'u24', name: 'Silhouette Woods', type: 'image', src: 'https://images.unsplash.com/photo-1447433589675-4aaa569f3e05?auto=format&fit=crop&w=1920&q=80' },
 ];
 
 const GRADIENT_WALLPAPERS = [
@@ -44,7 +63,8 @@ const GRADIENT_WALLPAPERS = [
   { id: 'g14', name: 'Ink',          type: 'gradient', src: 'linear-gradient(160deg, #000000, #1f2937)' },
 ];
 
-const LOCAL_SLOTS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+const LOCAL_SLOTS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12',
+  '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24'];
 
 const TZ_PRESETS = [
   ['UTC', 'UTC'],
@@ -98,9 +118,11 @@ const els = {
   widgets: document.getElementById('widgets'),
   searchForm: document.getElementById('searchForm'),
   searchInput: document.getElementById('searchInput'),
+  searchPinBtn: document.getElementById('searchPinBtn'),
   addNoteBtn: document.getElementById('addNoteBtn'),
   addClockBtn: document.getElementById('addClockBtn'),
   addTodoBtn: document.getElementById('addTodoBtn'),
+  addQuoteBtn: document.getElementById('addQuoteBtn'),
   cycleWallpaperBtn: document.getElementById('cycleWallpaperBtn'),
   settingsBtn: document.getElementById('settingsBtn'),
   settingsOverlay: document.getElementById('settingsOverlay'),
@@ -125,9 +147,34 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+function htmlFromText(text) {
+  if (!text) return '';
+  if (String(text).indexOf('<') !== -1) return String(text);
+  return escapeHtml(text).replace(/\n/g, '<br>');
+}
+
 function clampPct(v) {
   const n = Number(v);
   return isFinite(n) ? Math.min(95, Math.max(0, n)) : 0;
+}
+
+function fitWidget(el) {
+  const r = el.getBoundingClientRect();
+  if (!isFinite(r.width) || !isFinite(r.height)) return;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const edge = Math.max(4, Math.round(vw * 0.006));
+  const maxX = Math.max(0, 100 - ((r.width + edge) / vw) * 100);
+  const maxY = Math.max(0, 100 - ((r.height + edge) / vh) * 100);
+  const x = parseFloat(el.style.left);
+  const y = parseFloat(el.style.top);
+  el.style.left = (isFinite(x) ? Math.min(Math.max(0, x), maxX) : 50) + '%';
+  el.style.top = (isFinite(y) ? Math.min(Math.max(0, y), maxY) : 20) + '%';
+}
+
+function fitAllWidgets() {
+  els.widgets.querySelectorAll('.note, .clock, .todo, .quote').forEach(fitWidget);
+  fitWidget(els.searchForm);
 }
 
 function pct(v) {
@@ -152,7 +199,8 @@ function freshState() {
       cycleMinutes: 0,
     },
     wallpaper: { id: 'g7' },
-    searchPos: { x: 50, y: 3.2 },
+    searchPos: { x: 50, y: 3.2, centered: true },
+    searchPinned: false,
     notes: [
       {
         id: uid(),
@@ -160,15 +208,19 @@ function freshState() {
         text: 'Welcome to your dashboard!\n\nDrag this note by its header to move it around.\nChange its color, collapse or delete it from the header.\n\nTip: press / to search Google.',
         color: 'yellow',
         collapsed: false,
+        pinned: false,
         x: 5,
         y: 18,
       },
     ],
     clocks: [
-      { id: uid(), timezone: 'America/New_York', label: 'New York' },
-      { id: uid(), timezone: 'Asia/Kathmandu', label: 'Kathmandu' },
+      { id: uid(), timezone: 'America/New_York', label: 'New York', pinned: false },
+      { id: uid(), timezone: 'Asia/Kathmandu', label: 'Kathmandu', pinned: false },
     ],
     todos: [],
+    quotes: [
+      { id: uid(), text: QUOTE_DEFAULTS[0].text, author: QUOTE_DEFAULTS[0].author, collapsed: false, pinned: false },
+    ],
   };
 }
 
@@ -181,10 +233,16 @@ function mergeState(stored) {
       font: (s.settings && (s.settings.font || s.settings.defaultNoteFont)) || base.settings.font,
     }),
     wallpaper: Object.assign({}, base.wallpaper, s.wallpaper || {}),
-    searchPos: Object.assign({}, base.searchPos, s.searchPos || {}),
+    searchPos: Object.assign({
+      x: 50,
+      y: 3.2,
+      centered: !(s.searchPos && typeof s.searchPos === 'object'),
+    }, s.searchPos || {}),
+    searchPinned: !!s.searchPinned,
     notes: Array.isArray(s.notes) ? s.notes.filter((n) => n && typeof n === 'object') : [],
     clocks: Array.isArray(s.clocks) ? s.clocks.filter((c) => c && typeof c === 'object') : [],
     todos: Array.isArray(s.todos) ? s.todos.filter((t) => t && typeof t === 'object') : [],
+    quotes: Array.isArray(s.quotes) ? s.quotes.filter((q) => q && typeof q === 'object') : base.quotes,
   };
 }
 
@@ -313,7 +371,7 @@ function clockParts(timezone) {
 function layoutRow(items, getEl, startYFrac) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const gap = 16;
+  const gap = Math.max(8, Math.round(vw * 0.012));
   const rowStart = vw * 0.28;
   const maxRight = vw * 0.96;
   let cursorX = rowStart;
@@ -364,11 +422,12 @@ function renderTodo(todo) {
   el.dataset.todoId = todo.id;
   el.style.left = clampPct(todo.x) + '%';
   el.style.top = clampPct(todo.y) + '%';
-  el.style.width = Math.max(200, todo.w || 260) + 'px';
+  if (todo.w) el.style.width = Math.max(200, todo.w) + 'px';
   if (todo.h) el.style.height = todo.h + 'px';
 
   el.innerHTML =
     '<div class="todo-header">' +
+      '<button type="button" class="icon-btn todo-pin-btn" title="Pin">📌</button>' +
       '<input class="todo-title" type="text" value="' + escapeHtml(todo.title || '') + '" placeholder="To-Dos" title="List name">' +
       '<button type="button" class="icon-btn todo-collapse-btn" title="' + (todo.collapsed ? 'Expand' : 'Collapse') + '">' + (todo.collapsed ? '＋' : '–') + '</button>' +
       '<button type="button" class="icon-btn todo-delete-btn" title="Delete list">✕</button>' +
@@ -401,6 +460,8 @@ function renderTodo(todo) {
     saveState();
   });
 
+  bindPin(el, el.querySelector('.todo-pin-btn'), todo);
+
   el.querySelector('.todo-delete-btn').addEventListener('click', () => {
     state.todos = state.todos.filter((t) => t.id !== todo.id);
     el.remove();
@@ -413,7 +474,7 @@ function renderTodo(todo) {
     todo.h = Math.round(h);
     el.classList.add('fixed');
     saveState();
-  });
+  }, { disabled: () => todo.pinned });
   resizeHandle.addEventListener('dblclick', () => {
     delete todo.w;
     delete todo.h;
@@ -435,11 +496,11 @@ function renderTodo(todo) {
     saveState();
   });
 
-  makeDraggable(el, el.querySelector('.todo-header'), () => {
+  makeDraggable(el, el, () => {
     todo.x = pct(el.style.left);
     todo.y = pct(el.style.top);
     saveState();
-  });
+  }, { disabled: () => todo.pinned });
 
   els.widgets.appendChild(el);
 }
@@ -486,10 +547,114 @@ function renderTask(listEl, task, todo) {
 }
 
 function addTodo() {
-  const todo = { id: uid(), title: '', tasks: [], collapsed: false };
+  const todo = { id: uid(), title: '', tasks: [], collapsed: false, pinned: false };
   state.todos.push(todo);
   saveState();
   renderTodos();
+}
+
+/* ---------------- Quotes ---------------- */
+
+function renderQuotes() {
+  els.widgets.querySelectorAll('.quote').forEach((q) => q.remove());
+  for (const quote of state.quotes) renderQuote(quote);
+  if (state.quotes.some((q) => q.x === undefined || q.y === undefined)) {
+    layoutRow(state.quotes, (id) => els.widgets.querySelector('.quote[data-quote-id="' + id + '"]'), 0.58);
+    saveState();
+    renderQuotes();
+  }
+}
+
+function renderQuote(quote) {
+  const el = document.createElement('div');
+  el.className = 'quote' + (quote.collapsed ? ' collapsed' : '') + (quote.h ? ' fixed' : '');
+  el.dataset.quoteId = quote.id;
+  el.style.left = clampPct(quote.x) + '%';
+  el.style.top = clampPct(quote.y) + '%';
+  if (quote.w) el.style.width = Math.max(240, quote.w) + 'px';
+  if (quote.h) el.style.height = quote.h + 'px';
+
+  el.innerHTML =
+    '<div class="quote-header">' +
+      '<button type="button" class="icon-btn quote-pin-btn" title="Pin">📌</button>' +
+      '<span class="quote-mark" title="Quote">❝</span>' +
+      '<span class="note-spacer"></span>' +
+      '<button type="button" class="icon-btn quote-collapse-btn" title="' + (quote.collapsed ? 'Expand' : 'Collapse') + '">' + (quote.collapsed ? '＋' : '–') + '</button>' +
+      '<button type="button" class="icon-btn quote-delete-btn" title="Delete quote">✕</button>' +
+    '</div>' +
+    '<div class="quote-text" contenteditable="true" spellcheck="false" data-placeholder="Write your quote…">' + htmlFromText(quote.text) + '</div>' +
+    '<input class="quote-author" type="text" value="' + escapeHtml(quote.author || '') + '" placeholder="— Attribution (optional)" title="Author (optional)">' +
+    '<div class="quote-resize" title="Drag to resize — double-click to reset"></div>';
+
+  const textEl = el.querySelector('.quote-text');
+  const authorEl = el.querySelector('.quote-author');
+  if (quote.h) textEl.style.overflowY = 'auto';
+
+  textEl.addEventListener('input', () => {
+    quote.text = textEl.innerHTML;
+    saveState();
+  });
+
+  authorEl.addEventListener('input', () => {
+    quote.author = authorEl.value;
+    saveState();
+  });
+
+  const collapseBtn = el.querySelector('.quote-collapse-btn');
+  collapseBtn.addEventListener('click', () => {
+    quote.collapsed = !quote.collapsed;
+    el.classList.toggle('collapsed', quote.collapsed);
+    collapseBtn.textContent = quote.collapsed ? '＋' : '–';
+    collapseBtn.title = quote.collapsed ? 'Expand' : 'Collapse';
+    saveState();
+  });
+
+  bindPin(el, el.querySelector('.quote-pin-btn'), quote);
+
+  el.querySelector('.quote-delete-btn').addEventListener('click', () => {
+    state.quotes = state.quotes.filter((q) => q.id !== quote.id);
+    el.remove();
+    saveState();
+  });
+
+  const resizeHandle = el.querySelector('.quote-resize');
+  makeResizable(el, resizeHandle, (w, h) => {
+    quote.w = Math.round(w);
+    quote.h = Math.round(h);
+    el.classList.add('fixed');
+    textEl.style.height = '';
+    textEl.style.overflowY = 'auto';
+    saveState();
+  }, {
+    minW: Math.max(200, Math.round(window.innerWidth * 0.13)),
+    minH: Math.max(80, Math.round(window.innerHeight * 0.12)),
+    disabled: () => quote.pinned,
+  });
+  resizeHandle.addEventListener('dblclick', () => {
+    delete quote.w;
+    delete quote.h;
+    el.style.width = '';
+    el.style.height = '';
+    el.classList.remove('fixed');
+    textEl.style.overflowY = '';
+    saveState();
+  });
+
+  makeDraggable(el, el, () => {
+    quote.x = pct(el.style.left);
+    quote.y = pct(el.style.top);
+    saveState();
+  }, { disabled: () => quote.pinned });
+
+  els.widgets.appendChild(el);
+}
+
+function addQuote() {
+  const d = QUOTE_DEFAULTS[Math.floor(Math.random() * QUOTE_DEFAULTS.length)];
+  const quote = { id: uid(), text: d.text, author: d.author, collapsed: false, pinned: false };
+  state.quotes.push(quote);
+  saveState();
+  renderQuotes();
 }
 
 function renderClock(clock) {
@@ -501,6 +666,7 @@ function renderClock(clock) {
 
   el.innerHTML =
     '<div class="clock-header">' +
+      '<button type="button" class="icon-btn clock-pin-btn" title="Pin">📌</button>' +
       '<input class="clock-label" type="text" value="' + escapeHtml(clock.label || tzFriendly(clock.timezone)) + '" title="Clock name (drag to move)">' +
       '<span class="note-spacer"></span>' +
       '<button type="button" class="icon-btn clock-delete-btn" title="Remove clock">✕</button>' +
@@ -536,11 +702,13 @@ function renderClock(clock) {
     saveState();
   });
 
+  bindPin(el, el.querySelector('.clock-pin-btn'), clock);
+
   makeDraggable(el, el, () => {
     clock.x = pct(el.style.left);
     clock.y = pct(el.style.top);
     saveState();
-  });
+  }, { disabled: () => clock.pinned });
 
   els.widgets.appendChild(el);
 }
@@ -553,8 +721,9 @@ function renderNotes() {
 }
 
 function autosize(ta) {
+  const minH = Math.max(64, Math.min(160, Math.round(window.innerHeight * 0.11)));
   ta.style.height = 'auto';
-  ta.style.height = Math.max(ta.scrollHeight, 88) + 'px';
+  ta.style.height = Math.max(ta.scrollHeight, minH) + 'px';
 }
 
 function renderNote(note) {
@@ -563,20 +732,28 @@ function renderNote(note) {
   el.dataset.noteId = note.id;
   el.style.left = clampPct(note.x) + '%';
   el.style.top = clampPct(note.y) + '%';
-  el.style.width = Math.max(180, note.w || 280) + 'px';
+  if (note.w) el.style.width = Math.max(180, note.w) + 'px';
   if (note.h) el.style.height = note.h + 'px';
 
   el.innerHTML =
     '<div class="note-header">' +
       '<button type="button" class="icon-btn note-color-btn" title="Change color">🎨</button>' +
+      '<button type="button" class="icon-btn note-pin-btn" title="Pin">📌</button>' +
       '<input class="note-title" type="text" value="' + escapeHtml(note.title || '') + '" placeholder="Note title">' +
       '<button type="button" class="icon-btn note-collapse-btn" title="' + (note.collapsed ? 'Expand' : 'Collapse') + '">' + (note.collapsed ? '＋' : '–') + '</button>' +
       '<button type="button" class="icon-btn note-delete-btn" title="Delete note">✕</button>' +
     '</div>' +
-    '<textarea class="note-text" placeholder="Write something…">' + escapeHtml(note.text) + '</textarea>' +
+    '<div class="note-fmt">' +
+      '<button type="button" class="fmt-btn" data-fmt="bold" title="Bold (Ctrl+B)"><b>B</b></button>' +
+      '<button type="button" class="fmt-btn" data-fmt="italic" title="Italic (Ctrl+I)"><i>I</i></button>' +
+      '<button type="button" class="fmt-btn" data-fmt="underline" title="Underline (Ctrl+U)"><u>U</u></button>' +
+      '<button type="button" class="fmt-btn" data-fmt="strikeThrough" title="Strikethrough"><s>S</s></button>' +
+    '</div>' +
+    '<div class="note-text" contenteditable="true" spellcheck="false" data-placeholder="Write something…"></div>' +
     '<div class="note-resize" title="Drag to resize — double-click to reset"></div>';
 
   const ta = el.querySelector('.note-text');
+  ta.innerHTML = htmlFromText(note.text);
   if (note.h) ta.style.overflowY = 'auto';
   else autosize(ta);
 
@@ -586,7 +763,21 @@ function renderNote(note) {
   });
 
   ta.addEventListener('input', () => {
-    note.text = ta.value;
+    note.text = ta.innerHTML;
+    if (!note.h) autosize(ta);
+    saveState();
+  });
+
+  const fmtBar = el.querySelector('.note-fmt');
+  fmtBar.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.fmt-btn')) e.preventDefault();
+  });
+  fmtBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.fmt-btn');
+    if (!btn) return;
+    ta.focus();
+    document.execCommand(btn.dataset.fmt, false);
+    note.text = ta.innerHTML;
     if (!note.h) autosize(ta);
     saveState();
   });
@@ -607,6 +798,8 @@ function renderNote(note) {
     saveState();
   });
 
+  bindPin(el, el.querySelector('.note-pin-btn'), note);
+
   el.querySelector('.note-delete-btn').addEventListener('click', () => {
     state.notes = state.notes.filter((n) => n.id !== note.id);
     el.remove();
@@ -620,7 +813,7 @@ function renderNote(note) {
     ta.style.height = '';
     ta.style.overflowY = 'auto';
     saveState();
-  });
+  }, { disabled: () => note.pinned });
   resizeHandle.addEventListener('dblclick', () => {
     delete note.w;
     delete note.h;
@@ -635,14 +828,30 @@ function renderNote(note) {
     note.x = pct(el.style.left);
     note.y = pct(el.style.top);
     saveState();
-  });
+  }, { disabled: () => note.pinned });
 
   els.widgets.appendChild(el);
 }
 
 /* ---------------- Drag ---------------- */
 
-function makeDraggable(el, handle, onDrop) {
+function bindPin(el, btn, obj) {
+  const apply = () => {
+    el.classList.toggle('pinned', !!obj.pinned);
+    btn.classList.toggle('pinned', !!obj.pinned);
+    btn.title = obj.pinned ? 'Unpin' : 'Pin';
+  };
+  btn.addEventListener('click', () => {
+    obj.pinned = !obj.pinned;
+    apply();
+    saveState();
+  });
+  apply();
+  return apply;
+}
+
+function makeDraggable(el, handle, onDrop, opts) {
+  const disabled = opts && typeof opts.disabled === 'function' ? opts.disabled : null;
   let dragging = false;
   let startX = 0;
   let startY = 0;
@@ -650,6 +859,7 @@ function makeDraggable(el, handle, onDrop) {
 
   handle.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
+    if (disabled && disabled()) return;
     if (e.target.closest('button, select, input, textarea, [contenteditable]')) return;
     dragging = true;
     rect = el.getBoundingClientRect();
@@ -664,9 +874,10 @@ function makeDraggable(el, handle, onDrop) {
     if (!dragging) return;
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
-    const maxLeft = window.innerWidth - Math.min(rect.width, window.innerWidth * 0.9);
+    const maxLeft = Math.max(0, window.innerWidth - rect.width);
     const left = Math.min(Math.max(rect.left + dx, 0), maxLeft);
-    const top = Math.min(Math.max(rect.top + dy, 0), window.innerHeight - 30);
+    const maxTop = Math.max(0, window.innerHeight - rect.height);
+    const top = Math.min(Math.max(rect.top + dy, 0), maxTop);
     el.style.left = (left / window.innerWidth) * 100 + '%';
     el.style.top = (top / window.innerHeight) * 100 + '%';
   });
@@ -683,9 +894,10 @@ function makeDraggable(el, handle, onDrop) {
 }
 
 function makeResizable(el, handle, onResize, opts) {
-  const minW = (opts && opts.minW) || 180;
-  const minH = (opts && opts.minH) || 120;
-  const maxW = (opts && opts.maxW) || 900;
+  const minW = (opts && opts.minW) != null ? opts.minW : Math.max(140, Math.round(window.innerWidth * 0.1));
+  const minH = (opts && opts.minH) != null ? opts.minH : Math.max(80, Math.round(window.innerHeight * 0.12));
+  const maxW = (opts && opts.maxW) != null ? opts.maxW : Math.round(window.innerWidth * 0.85);
+  const disabled = opts && typeof opts.disabled === 'function' ? opts.disabled : null;
   let resizing = false;
   let startX = 0;
   let startY = 0;
@@ -694,6 +906,7 @@ function makeResizable(el, handle, onResize, opts) {
 
   handle.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
+    if (disabled && disabled()) return;
     resizing = true;
     const r = el.getBoundingClientRect();
     startW = r.width;
@@ -790,8 +1003,16 @@ function applyGlobalFont() {
 
 function applySearchPos() {
   const p = state.searchPos || { x: 50, y: 3.2 };
-  els.searchForm.style.left = p.x + '%';
-  els.searchForm.style.top = p.y + '%';
+  let x = Number(p.x);
+  if (p.centered && isFinite(x)) {
+    const w = Math.min(els.searchForm.offsetWidth, window.innerWidth);
+    x = x - (w / window.innerWidth) * 50;
+  }
+  els.searchForm.style.left = (isFinite(x) ? x : 50) + '%';
+  els.searchForm.style.top = (isFinite(Number(p.y)) ? Number(p.y) : 3.2) + '%';
+  els.searchForm.classList.toggle('pinned', !!state.searchPinned);
+  els.searchPinBtn.classList.toggle('pinned', !!state.searchPinned);
+  els.searchPinBtn.title = state.searchPinned ? 'Unpin position' : 'Pin position';
 }
 
 function bindSettings() {
@@ -837,6 +1058,7 @@ function bindUi() {
   els.addNoteBtn.addEventListener('click', addNote);
   els.addClockBtn.addEventListener('click', addClock);
   els.addTodoBtn.addEventListener('click', addTodo);
+  els.addQuoteBtn.addEventListener('click', addQuote);
   els.cycleWallpaperBtn.addEventListener('click', nextWallpaper);
   els.settingsBtn.addEventListener('click', () => els.settingsOverlay.classList.add('open'));
   els.closeSettingsBtn.addEventListener('click', () => els.settingsOverlay.classList.remove('open'));
@@ -844,13 +1066,20 @@ function bindUi() {
     if (e.target === els.settingsOverlay) els.settingsOverlay.classList.remove('open');
   });
 
+  els.searchPinBtn.addEventListener('click', () => {
+    state.searchPinned = !state.searchPinned;
+    applySearchPos();
+    saveState();
+  });
+
   makeDraggable(els.searchForm, els.searchForm, () => {
     state.searchPos = {
       x: pct(els.searchForm.style.left),
       y: pct(els.searchForm.style.top),
+      centered: false,
     };
     saveState();
-  });
+  }, { disabled: () => state.searchPinned });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') els.settingsOverlay.classList.remove('open');
@@ -861,6 +1090,8 @@ function bindUi() {
       els.searchInput.select();
     }
   });
+
+  window.addEventListener('resize', fitAllWidgets);
 }
 
 /* ---------------- Data ---------------- */
@@ -904,9 +1135,11 @@ function renderEverything() {
   renderNotes();
   renderClocks();
   renderTodos();
+  renderQuotes();
   syncSettingsUI();
   restartCycleTimer();
   updateAllClocks();
+  fitAllWidgets();
 }
 
 /* ---------------- Init ---------------- */
