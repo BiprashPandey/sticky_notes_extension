@@ -633,6 +633,7 @@ body.ready {
 
 .todo-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: clamp(5px, 0.5vw, 9px);
   padding: clamp(5px, 0.55vh, 8px) clamp(7px, 0.65vw, 10px);
@@ -746,6 +747,52 @@ body.ready {
 
 .todo-submit:active {
   transform: scale(0.92);
+}
+
+/* ---------- To-do subtasks ---------- */
+
+.todo-sub-toggle {
+  flex: none;
+  width: clamp(14px, 1.2vw, 20px);
+  height: clamp(14px, 1.2vw, 20px);
+  border-radius: 5px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: clamp(10px, 0.75vw, 14px);
+  line-height: 1;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.todo-sub-toggle:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.todo-subarea {
+  flex-basis: 100%;
+  display: none;
+  flex-direction: column;
+  gap: clamp(2px, 0.25vh, 4px);
+  margin-top: clamp(4px, 0.5vh, 7px);
+}
+
+.todo-item.sub-open > .todo-subarea {
+  display: flex;
+}
+
+.todo-subs {
+  list-style: none;
+  margin: 0;
+  padding: clamp(2px, 0.2vh, 4px) 0 0 clamp(10px, 1vw, 16px);
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2px, 0.25vh, 4px);
 }
 
 /* ---------- Quote widgets ---------- */

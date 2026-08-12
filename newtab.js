@@ -1,6 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'dashboardStateV1';
+const LAYOUT_KEY = 'dashboardLayoutV1';
 
 const FONTS = {
   default: { label: 'JetBrains Mono', stack: "'JetBrains Mono', 'Cascadia Code', 'Courier New', monospace" },
@@ -109,7 +110,11 @@ let state = null;
 let WALLPAPERS = [];
 let cycleTimer = null;
 let saveTimer = null;
+let layoutResizeTimer = null;
 let allTz = null;
+let appliedWpId = null;
+let pendingExternal = null;
+let externalApplyTimer = null;
 const clockFormatters = new Map();
 const clockEls = new Map();
 
@@ -127,6 +132,7 @@ const els = {
   settingsBtn: document.getElementById('settingsBtn'),
   settingsOverlay: document.getElementById('settingsOverlay'),
   closeSettingsBtn: document.getElementById('closeSettingsBtn'),
+  saveLayoutBtn: document.getElementById('saveLayoutBtn'),
   searchModeRadios: document.querySelectorAll('input[name="searchMode"]'),
   fontInput: document.getElementById('fontInput'),
   cycleInput: document.getElementById('cycleInput'),
@@ -254,6 +260,47 @@ function saveState(immediate) {
   else saveTimer = setTimeout(doSave, 250);
 }
 
+function stateFingerprint(st) {
+  const copy = Object.assign({}, st || {});
+  delete copy.saveToken;
+  return JSON.stringify(copy);
+}
+
+function isUserInteracting() {
+  if (els.widgets.querySelector('.dragging')) return true;
+  const a = document.activeElement;
+  if (!a || !a.closest) return false;
+  return !!a.closest('.note, .todo, .quote, .clock') &&
+    (a.isContentEditable || a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT');
+}
+
+function flushPendingExternal() {
+  if (externalApplyTimer) {
+    clearTimeout(externalApplyTimer);
+    externalApplyTimer = null;
+  }
+  if (!pendingExternal) return;
+  const v = pendingExternal;
+  pendingExternal = null;
+  if (isUserInteracting() || document.visibilityState === 'hidden') {
+    pendingExternal = v;
+    return;
+  }
+  if (v.saveToken <= state.saveToken) return;
+  if (stateFingerprint(state) === stateFingerprint(v)) {
+    state.saveToken = v.saveToken;
+    return;
+  }
+  state = mergeState(v);
+  renderEverything();
+}
+
+function queueExternalApply(newValue) {
+  pendingExternal = newValue;
+  if (externalApplyTimer) clearTimeout(externalApplyTimer);
+  externalApplyTimer = setTimeout(flushPendingExternal, 120);
+}
+
 /* ---------------- Wallpapers ---------------- */
 
 async function detectLocalWallpapers() {
@@ -278,25 +325,28 @@ function wallpaperById(id) {
 }
 
 function applyWallpaper(w) {
-  els.bgLayer.classList.remove('wp-image', 'wp-gradient');
-  els.bgLayer.innerHTML = '';
-  if (w.type === 'gradient') {
-    els.bgLayer.classList.add('wp-gradient');
-    els.bgLayer.style.backgroundImage = w.src;
-  } else {
-    els.bgLayer.classList.add('wp-image');
-    const img = new Image();
-    img.onload = () => { els.bgLayer.innerHTML = ''; els.bgLayer.appendChild(img); };
-    img.onerror = () => {
-      els.bgLayer.classList.remove('wp-image');
+  if (appliedWpId !== w.id) {
+    appliedWpId = w.id;
+    els.bgLayer.classList.remove('wp-image', 'wp-gradient');
+    els.bgLayer.innerHTML = '';
+    if (w.type === 'gradient') {
       els.bgLayer.classList.add('wp-gradient');
-      els.bgLayer.style.backgroundImage = 'linear-gradient(135deg, #0f172a, #334155)';
-    };
-    img.src = w.src;
-  }
-  if (state.wallpaper.id !== w.id) {
-    state.wallpaper.id = w.id;
-    saveState();
+      els.bgLayer.style.backgroundImage = w.src;
+    } else {
+      els.bgLayer.classList.add('wp-image');
+      const img = new Image();
+      img.onload = () => { els.bgLayer.innerHTML = ''; els.bgLayer.appendChild(img); };
+      img.onerror = () => {
+        els.bgLayer.classList.remove('wp-image');
+        els.bgLayer.classList.add('wp-gradient');
+        els.bgLayer.style.backgroundImage = 'linear-gradient(135deg, #0f172a, #334155)';
+      };
+      img.src = w.src;
+    }
+    if (state.wallpaper.id !== w.id) {
+      state.wallpaper.id = w.id;
+      saveState();
+    }
   }
   buildGallery();
 }
@@ -316,11 +366,18 @@ function restartCycleTimer() {
 }
 
 function buildGallery() {
-  els.wpGallery.innerHTML = '';
+  if (els.wpGallery.dataset.built) {
+    for (const b of els.wpGallery.querySelectorAll('.wp-thumb')) {
+      b.classList.toggle('selected', b.dataset.wpId === state.wallpaper.id);
+    }
+    return;
+  }
+  els.wpGallery.dataset.built = '1';
   for (const w of WALLPAPERS) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'wp-thumb' + (w.id === state.wallpaper.id ? ' selected' : '');
+    b.dataset.wpId = w.id;
     b.style.backgroundImage = w.type === 'gradient' ? w.src : 'url("' + w.src + '")';
     b.title = w.name;
     b.innerHTML = '<span class="wp-thumb-name">' + escapeHtml(w.name) + '</span><span class="wp-thumb-check">✓</span>';
@@ -377,6 +434,7 @@ function layoutRow(items, getEl, startYFrac) {
   let cursorX = rowStart;
   let rowY = vh * startYFrac;
   let rowH = 0;
+  let changed = false;
   for (const item of items) {
     const el = getEl(item.id);
     const w = el ? el.getBoundingClientRect().width : 220;
@@ -390,30 +448,30 @@ function layoutRow(items, getEl, startYFrac) {
     if (item.x === undefined || item.y === undefined) {
       item.x = Math.round((cursorX / vw) * 1000) / 10;
       item.y = Math.round((rowY / vh) * 1000) / 10;
+      if (el) {
+        el.style.left = item.x + '%';
+        el.style.top = item.y + '%';
+      }
+      changed = true;
     }
     cursorX = (item.x / 100) * vw + w + gap;
   }
+  return changed;
 }
 
 function renderClocks() {
   els.widgets.querySelectorAll('.clock').forEach((c) => c.remove());
   clockEls.clear();
   for (const clock of state.clocks) renderClock(clock);
-  if (state.clocks.some((c) => c.x === undefined || c.y === undefined)) {
-    layoutRow(state.clocks, (id) => els.widgets.querySelector('.clock[data-clock-id="' + id + '"]'), 0.42);
-    saveState();
-    renderClocks();
-  }
+  const changed = layoutRow(state.clocks, (id) => els.widgets.querySelector('.clock[data-clock-id="' + id + '"]'), 0.42);
+  if (changed) saveState();
 }
 
 function renderTodos() {
   els.widgets.querySelectorAll('.todo').forEach((t) => t.remove());
   for (const todo of state.todos) renderTodo(todo);
-  if (state.todos.some((t) => t.x === undefined || t.y === undefined)) {
-    layoutRow(state.todos, (id) => els.widgets.querySelector('.todo[data-todo-id="' + id + '"]'), 0.76);
-    saveState();
-    renderTodos();
-  }
+  const changed = layoutRow(state.todos, (id) => els.widgets.querySelector('.todo[data-todo-id="' + id + '"]'), 0.76);
+  if (changed) saveState();
 }
 
 function renderTodo(todo) {
@@ -445,7 +503,6 @@ function renderTodo(todo) {
     for (const task of todo.tasks || []) renderTask(listEl, task, todo);
   };
   renderTasks();
-
   el.querySelector('.todo-title').addEventListener('input', (e) => {
     todo.title = e.target.value;
     saveState();
@@ -505,13 +562,37 @@ function renderTodo(todo) {
   els.widgets.appendChild(el);
 }
 
-function renderTask(listEl, task, todo) {
+function removeTask(container, id) {
+  if (!container || !Array.isArray(container.tasks)) return;
+  const idx = container.tasks.findIndex((t) => t && t.id === id);
+  if (idx !== -1) {
+    container.tasks.splice(idx, 1);
+    return;
+  }
+  for (const t of container.tasks) {
+    if (t && Array.isArray(t.subtasks)) removeTask(t, id);
+  }
+}
+
+function renderTask(listEl, task, container) {
   const li = document.createElement('li');
   li.className = 'todo-item' + (task.done ? ' done' : '');
   li.innerHTML =
     '<button type="button" class="todo-check" title="' + (task.done ? 'Mark as not done' : 'Mark as done') + '">' + (task.done ? '✓' : '') + '</button>' +
+    '<button type="button" class="todo-sub-toggle" title="Add subtask">＋</button>' +
     '<span class="todo-text" contenteditable="true" spellcheck="false">' + escapeHtml(task.text) + '</span>' +
-    '<button type="button" class="icon-btn todo-item-del" title="Delete task">✕</button>';
+    '<button type="button" class="icon-btn todo-item-del" title="Delete task">✕</button>' +
+    '<div class="todo-subarea">' +
+      '<ul class="todo-subs"></ul>' +
+    '</div>';
+
+  const subsEl = li.querySelector('.todo-subs');
+  const renderSubs = () => {
+    subsEl.innerHTML = '';
+    for (const sub of task.subtasks || []) renderTask(subsEl, sub, task);
+  };
+  if (task.subtasks && task.subtasks.length) li.classList.add('sub-open');
+  renderSubs();
 
   li.querySelector('.todo-check').addEventListener('click', () => {
     task.done = !task.done;
@@ -522,16 +603,27 @@ function renderTask(listEl, task, todo) {
   });
 
   li.querySelector('.todo-item-del').addEventListener('click', () => {
-    todo.tasks = todo.tasks.filter((t) => t.id !== task.id);
+    removeTask(container, task.id);
     li.remove();
     saveState();
+  });
+
+  li.querySelector('.todo-sub-toggle').addEventListener('click', () => {
+    if (!task.subtasks) task.subtasks = [];
+    const sub = { id: uid(), text: '', done: false };
+    task.subtasks.push(sub);
+    li.classList.add('sub-open');
+    renderSubs();
+    saveState();
+    const newText = subsEl.querySelector('.todo-item:last-child .todo-text');
+    if (newText) newText.focus();
   });
 
   const span = li.querySelector('.todo-text');
   span.addEventListener('blur', () => {
     task.text = span.textContent.trim();
     if (!task.text) {
-      todo.tasks = todo.tasks.filter((t) => t.id !== task.id);
+      removeTask(container, task.id);
       li.remove();
     }
     saveState();
@@ -558,11 +650,8 @@ function addTodo() {
 function renderQuotes() {
   els.widgets.querySelectorAll('.quote').forEach((q) => q.remove());
   for (const quote of state.quotes) renderQuote(quote);
-  if (state.quotes.some((q) => q.x === undefined || q.y === undefined)) {
-    layoutRow(state.quotes, (id) => els.widgets.querySelector('.quote[data-quote-id="' + id + '"]'), 0.58);
-    saveState();
-    renderQuotes();
-  }
+  const changed = layoutRow(state.quotes, (id) => els.widgets.querySelector('.quote[data-quote-id="' + id + '"]'), 0.58);
+  if (changed) saveState();
 }
 
 function renderQuote(quote) {
@@ -937,6 +1026,111 @@ function makeResizable(el, handle, onResize, opts) {
   handle.addEventListener('pointercancel', end);
 }
 
+/* ---------------- Layout ---------------- */
+
+const LAYOUT_KINDS = {
+  note:  { selector: '.note',  idAttr: 'noteId',  minW: 180 },
+  clock: { selector: '.clock', idAttr: 'clockId', minW: 150 },
+  todo:  { selector: '.todo',  idAttr: 'todoId',  minW: 200 },
+  quote: { selector: '.quote', idAttr: 'quoteId', minW: 240 },
+};
+
+function round3(n) {
+  return Math.round(n * 1000) / 1000;
+}
+
+function captureLayout() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const widgets = [];
+
+  for (const [kind, spec] of Object.entries(LAYOUT_KINDS)) {
+    els.widgets.querySelectorAll(spec.selector).forEach((el) => {
+      const r = el.getBoundingClientRect();
+      const entry = {
+        kind: kind,
+        id: el.dataset[spec.idAttr],
+        x: round3(pct(el.style.left)),
+        y: round3(pct(el.style.top)),
+      };
+      if (el.style.width) {
+        entry.fixed = true;
+        entry.w = round3((r.width / vw) * 100);
+        entry.h = round3((r.height / vh) * 100);
+      }
+      widgets.push(entry);
+    });
+  }
+
+  const sr = els.searchForm.getBoundingClientRect();
+  widgets.push({
+    kind: 'search',
+    x: round3(pct(els.searchForm.style.left)),
+    y: round3(pct(els.searchForm.style.top)),
+    w: round3((sr.width / vw) * 100),
+    h: round3((sr.height / vh) * 100),
+  });
+
+  const layout = {
+    version: 1,
+    savedAt: Date.now(),
+    viewport: { w: vw, h: vh },
+    widgets: widgets,
+  };
+  localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+  return layout;
+}
+
+function applyLayout(layout) {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  for (const entry of layout.widgets || []) {
+    if (entry.kind === 'search') {
+      state.searchPos.x = clampPct(entry.x);
+      state.searchPos.y = clampPct(entry.y);
+      state.searchPos.centered = false;
+      continue;
+    }
+    const spec = LAYOUT_KINDS[entry.kind];
+    if (!spec) continue;
+    const arr = state[entry.kind + 's'];
+    const obj = Array.isArray(arr) ? arr.find((i) => i && i.id === entry.id) : null;
+    if (!obj) continue;
+    obj.x = clampPct(entry.x);
+    obj.y = clampPct(entry.y);
+    if (entry.fixed && entry.w != null && entry.h != null) {
+      obj.w = Math.max(spec.minW, Math.round((entry.w / 100) * vw));
+      obj.h = Math.max(60, Math.round((entry.h / 100) * vh));
+    }
+  }
+}
+
+function applySavedLayout() {
+  let raw = null;
+  try {
+    raw = localStorage.getItem(LAYOUT_KEY);
+  } catch (e) {
+    return false;
+  }
+  if (!raw) return false;
+  let layout = null;
+  try {
+    layout = JSON.parse(raw);
+  } catch (e) {
+    return false;
+  }
+  if (!layout || layout.version !== 1 || !Array.isArray(layout.widgets)) return false;
+  const before = stateFingerprint(state);
+  applyLayout(layout);
+  const changed = stateFingerprint(state) !== before;
+  if (changed) saveState();
+  return changed;
+}
+
+function refreshLayout() {
+  fitAllWidgets();
+}
+
 /* ---------------- Hero / ticker ---------------- */
 
 function updateAllClocks() {
@@ -1044,6 +1238,18 @@ function bindSettings() {
     e.target.value = '';
   });
   els.resetBtn.addEventListener('click', resetData);
+
+  els.saveLayoutBtn.addEventListener('click', () => {
+    captureLayout();
+    const btn = els.saveLayoutBtn;
+    const label = btn.textContent;
+    btn.textContent = 'Saved ✓';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = label;
+      btn.disabled = false;
+    }, 1200);
+  });
 }
 
 function syncSettingsUI() {
@@ -1091,7 +1297,21 @@ function bindUi() {
     }
   });
 
-  window.addEventListener('resize', fitAllWidgets);
+  window.addEventListener('resize', () => {
+    if (layoutResizeTimer) clearTimeout(layoutResizeTimer);
+    layoutResizeTimer = setTimeout(refreshLayout, 250);
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') flushPendingExternal();
+  });
+  window.addEventListener('focus', flushPendingExternal);
+  document.addEventListener('focusout', (e) => {
+    const next = e.relatedTarget;
+    if (next && next.closest && next.closest('.note, .todo, .quote, .clock')) return;
+    flushPendingExternal();
+  });
+  document.addEventListener('pointerup', flushPendingExternal);
 }
 
 /* ---------------- Data ---------------- */
@@ -1121,6 +1341,11 @@ function importData(file) {
 
 function resetData() {
   if (!confirm('Reset the dashboard to defaults? All notes and clocks will be removed.')) return;
+  try {
+    localStorage.removeItem(LAYOUT_KEY);
+  } catch (e) {
+    /* ignore */
+  }
   state = freshState();
   saveState(true);
   renderEverything();
@@ -1162,11 +1387,10 @@ function renderEverything() {
     if (area !== 'local') return;
     const ch = changes[STORAGE_KEY];
     if (!ch || !ch.newValue) return;
-    if (ch.newValue.saveToken === state.saveToken) return;
-    state = mergeState(ch.newValue);
-    renderEverything();
+    queueExternalApply(ch.newValue);
   });
 
+  applySavedLayout();
   renderEverything();
   setInterval(updateAllClocks, 1000);
   document.body.classList.add('ready');
