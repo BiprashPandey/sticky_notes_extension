@@ -260,6 +260,13 @@ function saveState(immediate) {
   else saveTimer = setTimeout(doSave, 250);
 }
 
+function flushPendingSave() {
+  if (!saveTimer) return;
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  chrome.storage.local.set({ [STORAGE_KEY]: JSON.parse(JSON.stringify(state)) });
+}
+
 function stateFingerprint(st) {
   const copy = Object.assign({}, st || {});
   delete copy.saveToken;
@@ -500,7 +507,7 @@ function renderTodo(todo) {
   const listEl = el.querySelector('.todo-list');
   const renderTasks = () => {
     listEl.innerHTML = '';
-    for (const task of todo.tasks || []) renderTask(listEl, task, todo);
+    for (const task of todo.tasks || []) renderTask(listEl, task, todo, renderTasks);
   };
   renderTasks();
   el.querySelector('.todo-title').addEventListener('input', (e) => {
@@ -522,7 +529,7 @@ function renderTodo(todo) {
   el.querySelector('.todo-delete-btn').addEventListener('click', () => {
     state.todos = state.todos.filter((t) => t.id !== todo.id);
     el.remove();
-    saveState();
+    saveState(true);
   });
 
   const resizeHandle = el.querySelector('.todo-resize');
@@ -563,24 +570,40 @@ function renderTodo(todo) {
 }
 
 function removeTask(container, id) {
-  if (!container || !Array.isArray(container.tasks)) return;
-  const idx = container.tasks.findIndex((t) => t && t.id === id);
-  if (idx !== -1) {
-    container.tasks.splice(idx, 1);
-    return;
+  if (!container) return;
+  for (const list of [container.tasks, container.subtasks]) {
+    if (!Array.isArray(list)) continue;
+    const idx = list.findIndex((t) => t && t.id === id);
+    if (idx !== -1) {
+      list.splice(idx, 1);
+      return;
+    }
   }
-  for (const t of container.tasks) {
+  for (const t of (container.tasks || []).concat(container.subtasks || [])) {
     if (t && Array.isArray(t.subtasks)) removeTask(t, id);
   }
 }
 
-function renderTask(listEl, task, container) {
+function moveTask(container, id, dir) {
+  if (!container || !Array.isArray(container.tasks)) return false;
+  const idx = container.tasks.findIndex((t) => t && t.id === id);
+  const swap = idx + dir;
+  if (idx === -1 || swap < 0 || swap >= container.tasks.length) return false;
+  const tmp = container.tasks[idx];
+  container.tasks[idx] = container.tasks[swap];
+  container.tasks[swap] = tmp;
+  return true;
+}
+
+function renderTask(listEl, task, container, rerender) {
   const li = document.createElement('li');
   li.className = 'todo-item' + (task.done ? ' done' : '');
   li.innerHTML =
     '<button type="button" class="todo-check" title="' + (task.done ? 'Mark as not done' : 'Mark as done') + '">' + (task.done ? '✓' : '') + '</button>' +
     '<button type="button" class="todo-sub-toggle" title="Add subtask">＋</button>' +
     '<span class="todo-text" contenteditable="true" spellcheck="false">' + escapeHtml(task.text) + '</span>' +
+    '<button type="button" class="todo-move-btn" data-move="-1" title="Move up">↑</button>' +
+    '<button type="button" class="todo-move-btn" data-move="1" title="Move down">↓</button>' +
     '<button type="button" class="icon-btn todo-item-del" title="Delete task">✕</button>' +
     '<div class="todo-subarea">' +
       '<ul class="todo-subs"></ul>' +
@@ -589,7 +612,7 @@ function renderTask(listEl, task, container) {
   const subsEl = li.querySelector('.todo-subs');
   const renderSubs = () => {
     subsEl.innerHTML = '';
-    for (const sub of task.subtasks || []) renderTask(subsEl, sub, task);
+    for (const sub of task.subtasks || []) renderTask(subsEl, sub, task, renderSubs);
   };
   if (task.subtasks && task.subtasks.length) li.classList.add('sub-open');
   renderSubs();
@@ -605,7 +628,17 @@ function renderTask(listEl, task, container) {
   li.querySelector('.todo-item-del').addEventListener('click', () => {
     removeTask(container, task.id);
     li.remove();
-    saveState();
+    saveState(true);
+  });
+
+  li.querySelectorAll('.todo-move-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const dir = Number(btn.dataset.move);
+      if (moveTask(container, task.id, dir)) {
+        if (rerender) rerender();
+        saveState();
+      }
+    });
   });
 
   li.querySelector('.todo-sub-toggle').addEventListener('click', () => {
@@ -703,7 +736,7 @@ function renderQuote(quote) {
   el.querySelector('.quote-delete-btn').addEventListener('click', () => {
     state.quotes = state.quotes.filter((q) => q.id !== quote.id);
     el.remove();
-    saveState();
+    saveState(true);
   });
 
   const resizeHandle = el.querySelector('.quote-resize');
@@ -788,7 +821,7 @@ function renderClock(clock) {
     state.clocks = state.clocks.filter((c) => c.id !== clock.id);
     clockEls.delete(clock.id);
     el.remove();
-    saveState();
+    saveState(true);
   });
 
   bindPin(el, el.querySelector('.clock-pin-btn'), clock);
@@ -892,7 +925,7 @@ function renderNote(note) {
   el.querySelector('.note-delete-btn').addEventListener('click', () => {
     state.notes = state.notes.filter((n) => n.id !== note.id);
     el.remove();
-    saveState();
+    saveState(true);
   });
 
   const resizeHandle = el.querySelector('.note-resize');
@@ -1303,8 +1336,10 @@ function bindUi() {
   });
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') flushPendingExternal();
+    if (document.visibilityState === 'hidden') flushPendingSave();
+    else flushPendingExternal();
   });
+  window.addEventListener('pagehide', flushPendingSave);
   window.addEventListener('focus', flushPendingExternal);
   document.addEventListener('focusout', (e) => {
     const next = e.relatedTarget;

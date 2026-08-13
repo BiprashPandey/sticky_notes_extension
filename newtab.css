@@ -699,6 +699,34 @@ body.ready {
   opacity: 1;
 }
 
+.todo-move-btn {
+  flex: none;
+  width: clamp(14px, 1.2vw, 20px);
+  height: clamp(14px, 1.2vw, 20px);
+  border-radius: 5px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: clamp(10px, 0.7vw, 13px);
+  line-height: 1;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.todo-item:hover .todo-move-btn {
+  opacity: 0.72;
+}
+
+.todo-move-btn:hover {
+  opacity: 1;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .todo-add {
   display: flex;
   align-items: center;
