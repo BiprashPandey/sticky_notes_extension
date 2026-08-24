@@ -144,6 +144,21 @@ const els = {
   closePomodoroBtn: document.getElementById('closePomodoroBtn'),
   videoOverlay: document.getElementById('videoOverlay'),
   closeVideoBtn: document.getElementById('closeVideoBtn'),
+  musicBtn: document.getElementById('musicBtn'),
+  musicOverlay: document.getElementById('musicOverlay'),
+  closeMusicBtn: document.getElementById('closeMusicBtn'),
+  musicAddForm: document.getElementById('musicAddForm'),
+  musicNameInput: document.getElementById('musicNameInput'),
+  musicUrlInput: document.getElementById('musicUrlInput'),
+  musicList: document.getElementById('musicList'),
+  musicHint: document.getElementById('musicHint'),
+  musicMini: document.getElementById('musicMini'),
+  ytHolder: document.getElementById('ytHolder'),
+  musicMiniName: document.getElementById('musicMiniName'),
+  musicPrevBtn: document.getElementById('musicPrevBtn'),
+  musicToggleBtn: document.getElementById('musicToggleBtn'),
+  musicNextBtn: document.getElementById('musicNextBtn'),
+  musicStopBtn: document.getElementById('musicStopBtn'),
   settingsBtn: document.getElementById('settingsBtn'),
   settingsOverlay: document.getElementById('settingsOverlay'),
   closeSettingsBtn: document.getElementById('closeSettingsBtn'),
@@ -243,6 +258,7 @@ function freshState() {
       { id: uid(), text: QUOTE_DEFAULTS[0].text, author: QUOTE_DEFAULTS[0].author, collapsed: false, pinned: false },
     ],
     videos: [],
+    music: { playlists: [] },
   };
 }
 
@@ -266,6 +282,11 @@ function mergeState(stored) {
     todos: Array.isArray(s.todos) ? s.todos.filter((t) => t && typeof t === 'object') : [],
     quotes: Array.isArray(s.quotes) ? s.quotes.filter((q) => q && typeof q === 'object') : base.quotes,
     videos: Array.isArray(s.videos) ? s.videos.filter((v) => v && typeof v === 'object') : [],
+    music: {
+      playlists: s.music && Array.isArray(s.music.playlists)
+        ? s.music.playlists.filter((p) => p && typeof p === 'object')
+        : [],
+    },
   };
 }
 
@@ -910,6 +931,136 @@ function openVideoPlayer() {
 function closeVideoPlayer() {
   els.videoOverlay.classList.remove('open');
   videoEls.vid.pause();
+}
+
+/* ---------------- Music (YouTube playlists) ---------------- */
+
+let ytFrameEl = null;
+let musicNowPlaying = null;
+let musicPaused = false;
+
+function parsePlaylistId(url) {
+  const m = String(url || '').match(/[?&]list=([A-Za-z0-9_-]+)/);
+  return m ? m[1] : '';
+}
+
+function renderMusic() {
+  els.musicList.innerHTML = '';
+  const lists = state.music ? state.music.playlists : [];
+  if (!lists.length) {
+    els.musicHint.textContent = 'No playlists yet — paste a YouTube playlist link above.';
+    return;
+  }
+  for (const pl of lists) {
+    const row = document.createElement('div');
+    row.className = 'music-row' + (musicNowPlaying && musicNowPlaying.id === pl.id ? ' active' : '');
+    row.innerHTML =
+      '<span class="music-row-name">' + escapeHtml(pl.name || 'Untitled') + '</span>' +
+      '<button type="button" class="video-nav-btn music-play-btn" title="Play">▶</button>' +
+      '<button type="button" class="icon-btn music-del-btn" title="Remove">✕</button>';
+    row.querySelector('.music-play-btn').addEventListener('click', () => {
+      playMusic(pl);
+      closeMusicOverlay();
+    });
+    row.querySelector('.music-del-btn').addEventListener('click', () => {
+      if (musicNowPlaying && musicNowPlaying.id === pl.id) stopMusic();
+      state.music.playlists = state.music.playlists.filter((p) => p.id !== pl.id);
+      saveState(true);
+      renderMusic();
+    });
+    els.musicList.appendChild(row);
+  }
+}
+
+function ytCommand(func) {
+  if (!ytFrameEl || !ytFrameEl.contentWindow) return;
+  ytFrameEl.contentWindow.postMessage(
+    JSON.stringify({ event: 'command', func, args: [] }),
+    'https://www.youtube.com'
+  );
+}
+
+function playMusic(pl) {
+  if (!pl || !pl.plId) return;
+  const frame = els.ytHolder.querySelector('iframe') || document.createElement('iframe');
+  if (!frame.parentNode) {
+    frame.allow = 'autoplay; encrypted-media';
+    frame.referrerPolicy = 'strict-origin-when-cross-origin';
+    els.ytHolder.appendChild(frame);
+  }
+  const samePlaylist = musicNowPlaying && musicNowPlaying.id === pl.id && frame.dataset.list === pl.plId;
+  musicNowPlaying = pl;
+  musicPaused = false;
+  if (!samePlaylist) {
+    frame.dataset.list = pl.plId;
+    frame.src = 'https://www.youtube.com/embed/videoseries?list=' + encodeURIComponent(pl.plId) +
+      '&enablejsapi=1&autoplay=1&playsinline=1';
+  }
+  ytFrameEl = frame;
+  els.musicMini.hidden = false;
+  els.musicMiniName.textContent = pl.name || 'Untitled playlist';
+  els.musicToggleBtn.textContent = '⏸';
+}
+
+function stopMusic() {
+  musicNowPlaying = null;
+  musicPaused = false;
+  ytFrameEl = null;
+  const frame = els.ytHolder.querySelector('iframe');
+  if (frame) frame.removeAttribute('src');
+  els.musicMini.hidden = true;
+}
+
+function toggleMusic() {
+  if (!musicNowPlaying) return;
+  if (musicPaused) {
+    ytCommand('playVideo');
+    musicPaused = false;
+    els.musicToggleBtn.textContent = '⏸';
+  } else {
+    ytCommand('pauseVideo');
+    musicPaused = true;
+    els.musicToggleBtn.textContent = '▶';
+  }
+}
+
+function openMusicOverlay() {
+  renderMusic();
+  els.musicOverlay.classList.add('open');
+}
+
+function closeMusicOverlay() {
+  els.musicOverlay.classList.remove('open');
+}
+
+function bindMusic() {
+  els.musicBtn.addEventListener('click', openMusicOverlay);
+  els.closeMusicBtn.addEventListener('click', closeMusicOverlay);
+  els.musicOverlay.addEventListener('click', (e) => {
+    if (e.target === els.musicOverlay) closeMusicOverlay();
+  });
+
+  els.musicAddForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = els.musicNameInput.value.trim();
+    const url = els.musicUrlInput.value.trim();
+    const plId = parsePlaylistId(url);
+    if (!name || !plId) {
+      els.musicHint.textContent = 'Enter a name and a valid YouTube playlist link (…?list=…).';
+      return;
+    }
+    state.music.playlists.push({ id: uid(), name, url, plId });
+    saveState();
+    els.musicNameInput.value = '';
+    els.musicUrlInput.value = '';
+    els.musicHint.textContent = '';
+    renderMusic();
+  });
+
+  els.musicPrevBtn.addEventListener('click', () => ytCommand('previousVideo'));
+  els.musicNextBtn.addEventListener('click', () => ytCommand('nextVideo'));
+  els.musicToggleBtn.addEventListener('click', toggleMusic);
+  els.musicStopBtn.addEventListener('click', stopMusic);
 }
 
 /* ---------------- Pomodoro timer ---------------- */
@@ -1824,6 +1975,7 @@ function bindUi() {
       els.settingsOverlay.classList.remove('open');
       els.pomodoroOverlay.classList.remove('open');
       closeVideoPlayer();
+      closeMusicOverlay();
       return;
     }
     const tag = document.activeElement && document.activeElement.tagName;
@@ -1906,6 +2058,7 @@ function renderEverything() {
   renderClocks();
   renderTodos();
   renderQuotes();
+  renderMusic();
   syncSettingsUI();
   restartCycleTimer();
   updateAllClocks();
@@ -1930,6 +2083,7 @@ function renderEverything() {
   bindUi();
   initPomodoro();
   initVideoPlayer();
+  bindMusic();
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
