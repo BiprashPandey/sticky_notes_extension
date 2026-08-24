@@ -142,6 +142,8 @@ const els = {
   pomodoroBtn: document.getElementById('pomodoroBtn'),
   pomodoroOverlay: document.getElementById('pomodoroOverlay'),
   closePomodoroBtn: document.getElementById('closePomodoroBtn'),
+  videoOverlay: document.getElementById('videoOverlay'),
+  closeVideoBtn: document.getElementById('closeVideoBtn'),
   settingsBtn: document.getElementById('settingsBtn'),
   settingsOverlay: document.getElementById('settingsOverlay'),
   closeSettingsBtn: document.getElementById('closeSettingsBtn'),
@@ -192,7 +194,7 @@ function fitWidget(el) {
 }
 
 function fitAllWidgets() {
-  els.widgets.querySelectorAll('.note, .clock, .todo, .quote, .video').forEach(fitWidget);
+  els.widgets.querySelectorAll('.note, .clock, .todo, .quote').forEach(fitWidget);
   fitWidget(els.searchForm);
 }
 
@@ -710,11 +712,33 @@ async function detectVideos() {
   try {
     names = await listPackagedVideos();
   } catch (e) {
-    names = [];
+    console.warn('[dashboard] Package folder scan failed:', e);
   }
-  if (!names.length) names = await probeNumberedVideos();
+  if (!names.length) {
+    try {
+      names = await fetchPlaylistNames();
+    } catch (e) {
+      console.warn('[dashboard] Playlist manifest scan failed:', e);
+    }
+  }
+  if (!names.length) {
+    try {
+      names = await probeNumberedVideos();
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  names = [...new Set(names)];
   names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
   videoLibrary = names.map((name) => ({ name, src: chrome.runtime.getURL('videos/' + name) }));
+}
+
+async function fetchPlaylistNames() {
+  const res = await fetch(chrome.runtime.getURL('videos/playlist.json'));
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data)) return [];
+  return data.filter((n) => typeof n === 'string' && isVideoName(n));
 }
 
 async function listPackagedVideos() {
@@ -750,143 +774,142 @@ async function probeNumberedVideos() {
   return [...new Set(found)];
 }
 
-function renderVideos() {
-  els.widgets.querySelectorAll('.video').forEach((v) => v.remove());
-  for (const player of state.videos) renderVideo(player);
+/* ---------------- Reel overlay player ---------------- */
+
+const VIDEO_STATE_KEY = 'dashboardReelsV1';
+let videoEls = null;
+let videoState = { order: [], pos: 0 };
+
+function loadVideoState() {
+  try {
+    const raw = localStorage.getItem(VIDEO_STATE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.order)) {
+      return {
+        order: parsed.order.filter((n) => typeof n === 'string'),
+        pos: Number(parsed.pos) || 0,
+      };
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  return { order: [], pos: 0 };
 }
 
-function renderVideo(player) {
-  const el = document.createElement('div');
-  el.className = 'video' + (player.collapsed ? ' collapsed' : '') + (player.h ? ' fixed' : '');
-  el.dataset.videoId = player.id;
-  el.style.left = clampPct(player.x) + '%';
-  el.style.top = clampPct(player.y) + '%';
-  if (player.w) el.style.width = Math.max(240, player.w) + 'px';
-  if (player.h) el.style.height = player.h + 'px';
-
-  el.innerHTML =
-    '<div class="video-header">' +
-      '<button type="button" class="icon-btn video-pin-btn" title="Pin">📌</button>' +
-      '<input class="video-title" type="text" value="' + escapeHtml(player.title || '') + '" placeholder="Video Player" title="Player name">' +
-      '<button type="button" class="icon-btn video-collapse-btn" title="' + (player.collapsed ? 'Expand' : 'Collapse') + '">' + (player.collapsed ? '＋' : '–') + '</button>' +
-      '<button type="button" class="icon-btn video-delete-btn" title="Delete player">✕</button>' +
-    '</div>' +
-    '<div class="video-body">' +
-      '<video class="video-player" controls preload="metadata"></video>' +
-    '</div>' +
-    '<div class="video-controls">' +
-      '<button type="button" class="video-nav-btn" data-dir="-1" title="Previous video">◀</button>' +
-      '<span class="video-name"></span>' +
-      '<button type="button" class="video-nav-btn" data-dir="1" title="Next video">▶</button>' +
-      '<button type="button" class="icon-btn video-open-btn" title="Open in new tab">⧉</button>' +
-    '</div>' +
-    '<div class="video-resize" title="Drag to resize — double-click to reset"></div>';
-
-  const vid = el.querySelector('.video-player');
-  const nameEl = el.querySelector('.video-name');
-  const navBtns = el.querySelectorAll('.video-nav-btn');
-  const openBtn = el.querySelector('.video-open-btn');
-
-  const applyVideo = () => {
-    if (!videoLibrary.length) {
-      nameEl.textContent = 'No videos in /videos folder';
-      navBtns.forEach((b) => { b.disabled = true; });
-      openBtn.disabled = true;
-      vid.removeAttribute('src');
-      vid.load();
-      return;
-    }
-    player.index = (((player.index || 0) % videoLibrary.length) + videoLibrary.length) % videoLibrary.length;
-    const item = videoLibrary[player.index];
-    if (vid.dataset.src !== item.src) {
-      vid.dataset.src = item.src;
-      vid.src = item.src;
-      vid.load();
-    }
-    nameEl.textContent = item.name;
-    nameEl.title = item.name;
-  };
-
-  navBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      if (!videoLibrary.length) return;
-      player.index += Number(btn.dataset.dir);
-      applyVideo();
-      saveState();
-    });
-  });
-
-  openBtn.addEventListener('click', () => {
-    if (!videoLibrary.length || !videoLibrary[player.index]) return;
-    chrome.tabs.create({ url: videoLibrary[player.index].src });
-  });
-
-  el.querySelector('.video-title').addEventListener('input', (e) => {
-    player.title = e.target.value;
-    saveState();
-  });
-
-  const collapseBtn = el.querySelector('.video-collapse-btn');
-  collapseBtn.addEventListener('click', () => {
-    player.collapsed = !player.collapsed;
-    el.classList.toggle('collapsed', player.collapsed);
-    collapseBtn.textContent = player.collapsed ? '＋' : '–';
-    collapseBtn.title = player.collapsed ? 'Expand' : 'Collapse';
-    saveState();
-  });
-
-  bindPin(el, el.querySelector('.video-pin-btn'), player);
-
-  el.querySelector('.video-delete-btn').addEventListener('click', () => {
-    state.videos = state.videos.filter((v) => v.id !== player.id);
-    el.remove();
-    saveState(true);
-  });
-
-  const resizeHandle = el.querySelector('.video-resize');
-  makeResizable(el, resizeHandle, (w, h) => {
-    player.w = Math.round(w);
-    player.h = Math.round(h);
-    el.classList.add('fixed');
-    saveState();
-  }, {
-    minW: Math.max(240, Math.round(window.innerWidth * 0.16)),
-    minH: Math.max(180, Math.round(window.innerHeight * 0.18)),
-    disabled: () => player.pinned,
-  });
-  resizeHandle.addEventListener('dblclick', () => {
-    delete player.w;
-    delete player.h;
-    el.style.width = '';
-    el.style.height = '';
-    el.classList.remove('fixed');
-    saveState();
-  });
-
-  makeDraggable(el, el.querySelector('.video-header'), () => {
-    player.x = pct(el.style.left);
-    player.y = pct(el.style.top);
-    saveState();
-  }, { disabled: () => player.pinned });
-
-  applyVideo();
-  els.widgets.appendChild(el);
+function saveVideoState() {
+  try {
+    localStorage.setItem(VIDEO_STATE_KEY, JSON.stringify(videoState));
+  } catch (e) {
+    /* ignore */
+  }
 }
 
-function addVideo() {
-  const n = state.videos.length;
-  const player = {
-    id: uid(),
-    title: '',
-    index: 0,
-    collapsed: false,
-    pinned: false,
-    x: 30 + ((n * 3) % 24),
-    y: 12 + ((n * 9) % 38),
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function reshuffleDeck(prevName) {
+  let order;
+  do {
+    order = shuffleArray(videoLibrary.map((v) => v.name));
+  } while (prevName && order.length > 1 && order[0] === prevName);
+  videoState.order = order;
+  videoState.pos = 0;
+}
+
+function syncVideoOrder() {
+  const names = videoLibrary.map((v) => v.name);
+  const matches = videoState.order.length === names.length &&
+    videoState.order.every((n, i) => names[i] === n);
+  if (!matches) reshuffleDeck(null);
+  if (videoState.pos < 0 || videoState.pos >= videoState.order.length) videoState.pos = 0;
+}
+
+function currentVideoItem() {
+  const name = videoState.order[videoState.pos];
+  return videoLibrary.find((v) => v.name === name) || null;
+}
+
+function initVideoPlayer() {
+  videoState = loadVideoState();
+  videoEls = {
+    vid: els.videoOverlay.querySelector('.video-player'),
+    name: els.videoOverlay.querySelector('.video-name'),
+    count: els.videoOverlay.querySelector('.video-count'),
+    navBtns: els.videoOverlay.querySelectorAll('.video-nav-btn'),
+    openBtn: els.videoOverlay.querySelector('.video-open-btn'),
   };
-  state.videos.push(player);
-  saveState();
-  renderVideo(player);
+
+  videoEls.navBtns.forEach((btn) => {
+    btn.addEventListener('click', () => stepVideo(Number(btn.dataset.dir)));
+  });
+  videoEls.openBtn.addEventListener('click', () => {
+    const item = videoLibrary[videoState.index];
+    if (!item) return;
+    chrome.tabs.create({ url: item.src });
+  });
+
+  els.addVideoBtn.addEventListener('click', openVideoPlayer);
+  els.closeVideoBtn.addEventListener('click', closeVideoPlayer);
+  els.videoOverlay.addEventListener('click', (e) => {
+    if (e.target === els.videoOverlay) closeVideoPlayer();
+  });
+}
+
+function applyVideoSource() {
+  const { vid, name, count, navBtns, openBtn } = videoEls;
+  if (!videoLibrary.length) {
+    name.textContent = 'No videos in /videos folder';
+    count.textContent = '';
+    navBtns.forEach((b) => { b.disabled = true; });
+    openBtn.disabled = true;
+    vid.removeAttribute('src');
+    vid.load();
+    return;
+  }
+  syncVideoOrder();
+  const item = currentVideoItem();
+  if (!item) return;
+  if (vid.dataset.src !== item.src) {
+    vid.dataset.src = item.src;
+    vid.src = item.src;
+    vid.load();
+  }
+  name.textContent = item.name.replace(/\.[^.]+$/, '');
+  name.title = item.name;
+  count.textContent = (videoState.pos + 1) + ' / ' + videoState.order.length;
+  navBtns.forEach((b) => { b.disabled = false; });
+  openBtn.disabled = false;
+}
+
+function stepVideo(dir) {
+  if (!videoState.order.length) return;
+  const len = videoState.order.length;
+  if (dir > 0) {
+    if (videoState.pos + 1 >= len) reshuffleDeck(videoState.order[videoState.pos]);
+    else videoState.pos += 1;
+  } else {
+    videoState.pos = videoState.pos - 1 < 0 ? len - 1 : videoState.pos - 1;
+  }
+  applyVideoSource();
+  saveVideoState();
+  videoEls.vid.play().catch(() => {});
+}
+
+function openVideoPlayer() {
+  applyVideoSource();
+  saveVideoState();
+  els.videoOverlay.classList.add('open');
+  videoEls.vid.play().catch(() => {});
+}
+
+function closeVideoPlayer() {
+  els.videoOverlay.classList.remove('open');
+  videoEls.vid.pause();
 }
 
 /* ---------------- Pomodoro timer ---------------- */
@@ -1774,7 +1797,6 @@ function bindUi() {
   els.addClockBtn.addEventListener('click', addClock);
   els.addTodoBtn.addEventListener('click', addTodo);
   els.addQuoteBtn.addEventListener('click', addQuote);
-  els.addVideoBtn.addEventListener('click', addVideo);
   els.cycleWallpaperBtn.addEventListener('click', nextWallpaper);
   els.settingsBtn.addEventListener('click', () => els.settingsOverlay.classList.add('open'));
   els.closeSettingsBtn.addEventListener('click', () => els.settingsOverlay.classList.remove('open'));
@@ -1801,9 +1823,17 @@ function bindUi() {
     if (e.key === 'Escape') {
       els.settingsOverlay.classList.remove('open');
       els.pomodoroOverlay.classList.remove('open');
+      closeVideoPlayer();
+      return;
     }
     const tag = document.activeElement && document.activeElement.tagName;
-    if (e.key === '/' && !(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT')) {
+    const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    if (els.videoOverlay.classList.contains('open') && !typing) {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); stepVideo(-1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); stepVideo(1); }
+      return;
+    }
+    if (e.key === '/' && !typing) {
       e.preventDefault();
       els.searchInput.focus();
       els.searchInput.select();
@@ -1823,7 +1853,7 @@ function bindUi() {
   window.addEventListener('focus', flushPendingExternal);
   document.addEventListener('focusout', (e) => {
     const next = e.relatedTarget;
-    if (next && next.closest && next.closest('.note, .todo, .quote, .clock, .video')) return;
+    if (next && next.closest && next.closest('.note, .todo, .quote, .clock')) return;
     flushPendingExternal();
   });
   document.addEventListener('pointerup', flushPendingExternal);
@@ -1876,7 +1906,6 @@ function renderEverything() {
   renderClocks();
   renderTodos();
   renderQuotes();
-  renderVideos();
   syncSettingsUI();
   restartCycleTimer();
   updateAllClocks();
@@ -1900,6 +1929,7 @@ function renderEverything() {
   bindSettings();
   bindUi();
   initPomodoro();
+  initVideoPlayer();
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;

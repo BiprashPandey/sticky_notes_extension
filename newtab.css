@@ -448,8 +448,7 @@ body.ready {
 
 .note-resize,
 .todo-resize,
-.quote-resize,
-.video-resize {
+.quote-resize {
   position: absolute;
   right: clamp(1px, 0.25vw, 4px);
   bottom: clamp(1px, 0.25vw, 4px);
@@ -462,8 +461,7 @@ body.ready {
 
 .note-resize::after,
 .todo-resize::after,
-.quote-resize::after,
-.video-resize::after {
+.quote-resize::after {
   content: '';
   position: absolute;
   right: clamp(2px, 0.3vw, 5px);
@@ -479,15 +477,13 @@ body.ready {
 
 .note-resize:hover::after,
 .todo-resize:hover::after,
-.quote-resize:hover::after,
-.video-resize:hover::after {
+.quote-resize:hover::after {
   opacity: 1;
 }
 
 .note.collapsed .note-resize,
 .todo.collapsed .todo-resize,
-.quote.collapsed .quote-resize,
-.video.collapsed .video-resize {
+.quote.collapsed .quote-resize {
   display: none;
 }
 
@@ -908,55 +904,76 @@ body.ready {
 
 /* ---------- Video player widgets ---------- */
 
-.video {
-  position: absolute;
-  width: clamp(300px, 26vw, 560px);
-  max-width: 88vw;
-  display: flex;
-  flex-direction: column;
-  padding: clamp(8px, 0.9vh, 14px) clamp(9px, 0.85vw, 15px);
-  border-radius: var(--radius);
-  border: 1px solid var(--glass-border);
-  background: var(--glass-strong);
-  backdrop-filter: blur(18px) saturate(1.35);
-  box-shadow: var(--shadow);
-  pointer-events: auto;
-  font-family: var(--ui-font);
-}
+/* ---------- Reels overlay ---------- */
 
-.video-header {
+.video-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
   display: flex;
   align-items: center;
-  gap: clamp(3px, 0.35vw, 7px);
-  margin-bottom: clamp(4px, 0.55vh, 8px);
-  cursor: grab;
-  user-select: none;
-  touch-action: none;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.55);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 
-.video.pinned .video-header {
-  cursor: default;
+.video-overlay.open {
+  opacity: 1;
+  visibility: visible;
 }
 
-.video-title {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--text);
+.video-overlay-close {
+  position: absolute;
+  top: clamp(14px, 2vh, 26px);
+  right: clamp(16px, 2vw, 30px);
+  font-size: clamp(15px, 1.3vw, 22px);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: clamp(6px, 0.7vh, 10px) clamp(9px, 0.9vw, 14px);
+  opacity: 0.85;
+}
+
+.video-overlay-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+  opacity: 1;
+}
+
+.video-overlay-card {
+  width: min(96vw, calc(70vh * 9 / 16 + 40px));
+  padding: clamp(12px, 1.6vh, 22px) clamp(12px, 1.3vw, 22px);
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(26px) saturate(1.4);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.1vh, 14px);
   font-family: var(--ui-font);
-  font-size: clamp(11px, 0.8vw, 15px);
+  transform: translateY(12px) scale(0.98);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.video-overlay.open .video-overlay-card {
+  transform: none;
+}
+
+.video-overlay-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(5px, 0.5vw, 9px);
+}
+
+.video-count {
+  color: var(--text-dim);
+  font-size: clamp(10.5px, 0.75vw, 13.5px);
   font-weight: 600;
-}
-
-.video-title:focus {
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.35);
-}
-
-.video.collapsed .video-body,
-.video.collapsed .video-controls {
-  display: none;
+  letter-spacing: 0.04em;
 }
 
 .video-body {
@@ -967,21 +984,13 @@ body.ready {
 }
 
 .video-player {
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  height: min(70vh, 150vw);
+  aspect-ratio: 9 / 16;
+  width: auto;
+  max-width: 86vw;
+  object-fit: contain;
   display: block;
   background: #000;
-}
-
-.video.fixed .video-body {
-  flex: 1;
-  min-height: 0;
-}
-
-.video.fixed .video-player {
-  height: 100%;
-  aspect-ratio: auto;
-  object-fit: contain;
 }
 
 .video-controls {
