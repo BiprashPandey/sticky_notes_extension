@@ -13,6 +13,15 @@ const FONTS = {
 
 const NOTE_COLORS = ['yellow', 'pink', 'green', 'blue', 'purple', 'orange'];
 
+const POMODORO_KEY = 'dashboardPomodoroV1';
+const POMODORO_MODES = {
+  focus: { label: 'Focus', minutes: 25 },
+  short: { label: 'Short Break', minutes: 5 },
+  long:  { label: 'Long Break', minutes: 15 },
+};
+const POMODORO_RING_CIRCUMFERENCE = 2 * Math.PI * 90;
+const POMODORO_CYCLE = 4;
+
 const QUOTE_DEFAULTS = [
   { text: 'The best way to predict the future is to invent it.', author: 'Alan Kay' },
   { text: 'In the middle of difficulty lies opportunity.', author: 'Albert Einstein' },
@@ -128,7 +137,11 @@ const els = {
   addClockBtn: document.getElementById('addClockBtn'),
   addTodoBtn: document.getElementById('addTodoBtn'),
   addQuoteBtn: document.getElementById('addQuoteBtn'),
+  addVideoBtn: document.getElementById('addVideoBtn'),
   cycleWallpaperBtn: document.getElementById('cycleWallpaperBtn'),
+  pomodoroBtn: document.getElementById('pomodoroBtn'),
+  pomodoroOverlay: document.getElementById('pomodoroOverlay'),
+  closePomodoroBtn: document.getElementById('closePomodoroBtn'),
   settingsBtn: document.getElementById('settingsBtn'),
   settingsOverlay: document.getElementById('settingsOverlay'),
   closeSettingsBtn: document.getElementById('closeSettingsBtn'),
@@ -179,7 +192,7 @@ function fitWidget(el) {
 }
 
 function fitAllWidgets() {
-  els.widgets.querySelectorAll('.note, .clock, .todo, .quote').forEach(fitWidget);
+  els.widgets.querySelectorAll('.note, .clock, .todo, .quote, .video').forEach(fitWidget);
   fitWidget(els.searchForm);
 }
 
@@ -227,6 +240,7 @@ function freshState() {
     quotes: [
       { id: uid(), text: QUOTE_DEFAULTS[0].text, author: QUOTE_DEFAULTS[0].author, collapsed: false, pinned: false },
     ],
+    videos: [],
   };
 }
 
@@ -249,6 +263,7 @@ function mergeState(stored) {
     clocks: Array.isArray(s.clocks) ? s.clocks.filter((c) => c && typeof c === 'object') : [],
     todos: Array.isArray(s.todos) ? s.todos.filter((t) => t && typeof t === 'object') : [],
     quotes: Array.isArray(s.quotes) ? s.quotes.filter((q) => q && typeof q === 'object') : base.quotes,
+    videos: Array.isArray(s.videos) ? s.videos.filter((v) => v && typeof v === 'object') : [],
   };
 }
 
@@ -277,7 +292,7 @@ function isUserInteracting() {
   if (els.widgets.querySelector('.dragging')) return true;
   const a = document.activeElement;
   if (!a || !a.closest) return false;
-  return !!a.closest('.note, .todo, .quote, .clock') &&
+  return !!a.closest('.note, .todo, .quote, .clock, .video') &&
     (a.isContentEditable || a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT');
 }
 
@@ -678,6 +693,466 @@ function addTodo() {
   renderTodos();
 }
 
+/* ---------------- Video players ---------------- */
+
+const VIDEO_EXTS = ['mp4', 'm4v', 'webm', 'mov', 'mkv', 'ogv', 'ogg'];
+
+let videoLibrary = [];
+
+function isVideoName(name) {
+  const dot = name.lastIndexOf('.');
+  if (dot === -1) return false;
+  return VIDEO_EXTS.includes(name.slice(dot + 1).toLowerCase());
+}
+
+async function detectVideos() {
+  let names = [];
+  try {
+    names = await listPackagedVideos();
+  } catch (e) {
+    names = [];
+  }
+  if (!names.length) names = await probeNumberedVideos();
+  names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  videoLibrary = names.map((name) => ({ name, src: chrome.runtime.getURL('videos/' + name) }));
+}
+
+async function listPackagedVideos() {
+  const root = await new Promise((resolve, reject) => {
+    try {
+      chrome.runtime.getPackageDirectoryEntry(resolve, reject);
+    } catch (e) {
+      reject(e);
+    }
+  });
+  const dir = await new Promise((resolve, reject) => root.getDirectory('videos', { create: false }, resolve, reject));
+  const files = [];
+  const reader = dir.createReader();
+  for (;;) {
+    const batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+    if (!batch.length) break;
+    for (const f of batch) {
+      if (f.isFile && isVideoName(f.name)) files.push(f.name);
+    }
+  }
+  return files;
+}
+
+async function probeNumberedVideos() {
+  const found = [];
+  await Promise.all(LOCAL_SLOTS.map((slot) => ['mp4', 'webm'].map((ext) => new Promise((resolve) => {
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.onloadedmetadata = () => { found.push(slot + '.' + ext); resolve(); };
+    v.onerror = () => resolve();
+    v.src = chrome.runtime.getURL('videos/' + slot + '.' + ext);
+  }))).flat());
+  return [...new Set(found)];
+}
+
+function renderVideos() {
+  els.widgets.querySelectorAll('.video').forEach((v) => v.remove());
+  for (const player of state.videos) renderVideo(player);
+}
+
+function renderVideo(player) {
+  const el = document.createElement('div');
+  el.className = 'video' + (player.collapsed ? ' collapsed' : '') + (player.h ? ' fixed' : '');
+  el.dataset.videoId = player.id;
+  el.style.left = clampPct(player.x) + '%';
+  el.style.top = clampPct(player.y) + '%';
+  if (player.w) el.style.width = Math.max(240, player.w) + 'px';
+  if (player.h) el.style.height = player.h + 'px';
+
+  el.innerHTML =
+    '<div class="video-header">' +
+      '<button type="button" class="icon-btn video-pin-btn" title="Pin">📌</button>' +
+      '<input class="video-title" type="text" value="' + escapeHtml(player.title || '') + '" placeholder="Video Player" title="Player name">' +
+      '<button type="button" class="icon-btn video-collapse-btn" title="' + (player.collapsed ? 'Expand' : 'Collapse') + '">' + (player.collapsed ? '＋' : '–') + '</button>' +
+      '<button type="button" class="icon-btn video-delete-btn" title="Delete player">✕</button>' +
+    '</div>' +
+    '<div class="video-body">' +
+      '<video class="video-player" controls preload="metadata"></video>' +
+    '</div>' +
+    '<div class="video-controls">' +
+      '<button type="button" class="video-nav-btn" data-dir="-1" title="Previous video">◀</button>' +
+      '<span class="video-name"></span>' +
+      '<button type="button" class="video-nav-btn" data-dir="1" title="Next video">▶</button>' +
+      '<button type="button" class="icon-btn video-open-btn" title="Open in new tab">⧉</button>' +
+    '</div>' +
+    '<div class="video-resize" title="Drag to resize — double-click to reset"></div>';
+
+  const vid = el.querySelector('.video-player');
+  const nameEl = el.querySelector('.video-name');
+  const navBtns = el.querySelectorAll('.video-nav-btn');
+  const openBtn = el.querySelector('.video-open-btn');
+
+  const applyVideo = () => {
+    if (!videoLibrary.length) {
+      nameEl.textContent = 'No videos in /videos folder';
+      navBtns.forEach((b) => { b.disabled = true; });
+      openBtn.disabled = true;
+      vid.removeAttribute('src');
+      vid.load();
+      return;
+    }
+    player.index = (((player.index || 0) % videoLibrary.length) + videoLibrary.length) % videoLibrary.length;
+    const item = videoLibrary[player.index];
+    if (vid.dataset.src !== item.src) {
+      vid.dataset.src = item.src;
+      vid.src = item.src;
+      vid.load();
+    }
+    nameEl.textContent = item.name;
+    nameEl.title = item.name;
+  };
+
+  navBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!videoLibrary.length) return;
+      player.index += Number(btn.dataset.dir);
+      applyVideo();
+      saveState();
+    });
+  });
+
+  openBtn.addEventListener('click', () => {
+    if (!videoLibrary.length || !videoLibrary[player.index]) return;
+    chrome.tabs.create({ url: videoLibrary[player.index].src });
+  });
+
+  el.querySelector('.video-title').addEventListener('input', (e) => {
+    player.title = e.target.value;
+    saveState();
+  });
+
+  const collapseBtn = el.querySelector('.video-collapse-btn');
+  collapseBtn.addEventListener('click', () => {
+    player.collapsed = !player.collapsed;
+    el.classList.toggle('collapsed', player.collapsed);
+    collapseBtn.textContent = player.collapsed ? '＋' : '–';
+    collapseBtn.title = player.collapsed ? 'Expand' : 'Collapse';
+    saveState();
+  });
+
+  bindPin(el, el.querySelector('.video-pin-btn'), player);
+
+  el.querySelector('.video-delete-btn').addEventListener('click', () => {
+    state.videos = state.videos.filter((v) => v.id !== player.id);
+    el.remove();
+    saveState(true);
+  });
+
+  const resizeHandle = el.querySelector('.video-resize');
+  makeResizable(el, resizeHandle, (w, h) => {
+    player.w = Math.round(w);
+    player.h = Math.round(h);
+    el.classList.add('fixed');
+    saveState();
+  }, {
+    minW: Math.max(240, Math.round(window.innerWidth * 0.16)),
+    minH: Math.max(180, Math.round(window.innerHeight * 0.18)),
+    disabled: () => player.pinned,
+  });
+  resizeHandle.addEventListener('dblclick', () => {
+    delete player.w;
+    delete player.h;
+    el.style.width = '';
+    el.style.height = '';
+    el.classList.remove('fixed');
+    saveState();
+  });
+
+  makeDraggable(el, el.querySelector('.video-header'), () => {
+    player.x = pct(el.style.left);
+    player.y = pct(el.style.top);
+    saveState();
+  }, { disabled: () => player.pinned });
+
+  applyVideo();
+  els.widgets.appendChild(el);
+}
+
+function addVideo() {
+  const n = state.videos.length;
+  const player = {
+    id: uid(),
+    title: '',
+    index: 0,
+    collapsed: false,
+    pinned: false,
+    x: 30 + ((n * 3) % 24),
+    y: 12 + ((n * 9) % 38),
+  };
+  state.videos.push(player);
+  saveState();
+  renderVideo(player);
+}
+
+/* ---------------- Pomodoro timer ---------------- */
+
+let pomodoro = null;
+let pomoEls = null;
+let pomoAudio = null;
+
+function loadPomodoroState() {
+  const defaultDurations = {};
+  for (const [mode, def] of Object.entries(POMODORO_MODES)) defaultDurations[mode] = def.minutes;
+  try {
+    const raw = localStorage.getItem(POMODORO_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && POMODORO_MODES[p.mode] && typeof p.completed === 'number') {
+        const durations = Object.assign({}, defaultDurations);
+        for (const mode of Object.keys(POMODORO_MODES)) {
+          const v = p.durations ? Number(p.durations[mode]) : NaN;
+          if (isFinite(v) && v >= 1) durations[mode] = Math.min(180, Math.round(v));
+        }
+        const total = durations[p.mode] * 60000;
+        return {
+          mode: p.mode,
+          running: !!p.running && isFinite(p.endAt),
+          endAt: p.running && isFinite(p.endAt) ? Number(p.endAt) : null,
+          remainingMs: Math.min(Math.max(Number(p.remainingMs) || 0, 0), total),
+          completed: Math.max(0, Math.floor(p.completed)),
+          durations,
+        };
+      }
+    }
+  } catch (e) {
+    /* fall through to defaults */
+  }
+  return { mode: 'focus', running: false, endAt: null, remainingMs: POMODORO_MODES.focus.minutes * 60000, completed: 0, durations: defaultDurations };
+}
+
+function savePomodoroState() {
+  try {
+    localStorage.setItem(POMODORO_KEY, JSON.stringify(pomodoro));
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+function pomoMinutes(mode) {
+  const d = pomodoro && pomodoro.durations;
+  return d && isFinite(d[mode]) && d[mode] >= 1 ? d[mode] : POMODORO_MODES[mode].minutes;
+}
+
+function pomoRemaining() {
+  return pomodoro.running ? pomodoro.endAt - Date.now() : pomodoro.remainingMs;
+}
+
+function pomoFormat(ms) {
+  const clamped = Math.max(0, ms);
+  const m = Math.floor(clamped / 60000);
+  const s = Math.floor((clamped % 60000) / 1000);
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function initPomodoro() {
+  pomodoro = loadPomodoroState();
+  pomoEls = {
+    modes: [...els.pomodoroOverlay.querySelectorAll('.pomodoro-mode')],
+    ring: els.pomodoroOverlay.querySelector('.pomodoro-ring'),
+    fg: els.pomodoroOverlay.querySelector('.pomodoro-ring-fg'),
+    time: els.pomodoroOverlay.querySelector('.pomodoro-time'),
+    phase: els.pomodoroOverlay.querySelector('.pomodoro-phase'),
+    toggle: els.pomodoroOverlay.querySelector('.pomodoro-start'),
+    reset: els.pomodoroOverlay.querySelector('.pomodoro-reset'),
+    dotsWrap: els.pomodoroOverlay.querySelector('.pomodoro-dots'),
+    hint: els.pomodoroOverlay.querySelector('.pomodoro-hint'),
+  };
+
+  pomoEls.dotsWrap.innerHTML = '';
+  for (let i = 0; i < POMODORO_CYCLE; i++) {
+    const dot = document.createElement('span');
+    dot.className = 'pomodoro-dot';
+    pomoEls.dotsWrap.appendChild(dot);
+  }
+  pomoEls.dots = [...pomoEls.dotsWrap.children];
+
+  pomoEls.durationInputs = {};
+  els.pomodoroOverlay.querySelectorAll('.pomodoro-duration').forEach((row) => {
+    const mode = row.dataset.mode;
+    const input = row.querySelector('.pomodoro-min');
+    pomoEls.durationInputs[mode] = input;
+    input.addEventListener('change', () => pomoSetDuration(mode, parseInt(input.value, 10)));
+    row.querySelectorAll('.pomodoro-step').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const cur = parseInt(input.value, 10) || POMODORO_MODES[mode].minutes;
+        pomoSetDuration(mode, cur + Number(btn.dataset.step));
+      });
+    });
+  });
+  syncDurationInputs();
+
+  els.pomodoroBtn.addEventListener('click', openPomodoro);
+  els.closePomodoroBtn.addEventListener('click', closePomodoro);
+  els.pomodoroOverlay.addEventListener('click', (e) => {
+    if (e.target === els.pomodoroOverlay) closePomodoro();
+  });
+
+  pomoEls.modes.forEach((btn) => {
+    btn.addEventListener('click', () => pomoSelectMode(btn.dataset.mode));
+  });
+  pomoEls.toggle.addEventListener('click', pomoToggleRun);
+  pomoEls.reset.addEventListener('click', pomoResetCurrent);
+
+  setInterval(pomodoroTick, 250);
+  pomodoroTick();
+}
+
+function openPomodoro() {
+  els.pomodoroOverlay.classList.add('open');
+  renderPomodoro();
+}
+
+function closePomodoro() {
+  els.pomodoroOverlay.classList.remove('open');
+}
+
+function pomoSelectMode(mode) {
+  if (!POMODORO_MODES[mode]) return;
+  pomodoro = {
+    mode,
+    running: false,
+    endAt: null,
+    remainingMs: pomoMinutes(mode) * 60000,
+    completed: pomodoro.completed,
+    durations: Object.assign({}, pomodoro.durations),
+  };
+  savePomodoroState();
+  renderPomodoro();
+}
+
+function pomoToggleRun() {
+  ensurePomoAudio();
+  if (pomodoro.running) {
+    pomodoro.remainingMs = Math.max(0, pomodoro.endAt - Date.now());
+    pomodoro.running = false;
+    pomodoro.endAt = null;
+  } else {
+    const rem = pomodoro.remainingMs > 0 ? pomodoro.remainingMs : pomoMinutes(pomodoro.mode) * 60000;
+    pomodoro.remainingMs = rem;
+    pomodoro.endAt = Date.now() + rem;
+    pomodoro.running = true;
+  }
+  savePomodoroState();
+  renderPomodoro();
+}
+
+function pomoResetCurrent() {
+  pomodoro.running = false;
+  pomodoro.endAt = null;
+  pomodoro.remainingMs = pomoMinutes(pomodoro.mode) * 60000;
+  savePomodoroState();
+  renderPomodoro();
+}
+
+function pomoSetDuration(mode, mins) {
+  if (!POMODORO_MODES[mode]) return;
+  if (!isFinite(mins)) {
+    syncDurationInputs();
+    return;
+  }
+  mins = Math.min(180, Math.max(1, Math.round(mins)));
+  pomodoro.durations = Object.assign({}, pomodoro.durations);
+  pomodoro.durations[mode] = mins;
+  if (pomodoro.mode === mode && !pomodoro.running) {
+    pomodoro.remainingMs = mins * 60000;
+  }
+  savePomodoroState();
+  syncDurationInputs();
+  renderPomodoro();
+}
+
+function syncDurationInputs() {
+  for (const [mode, input] of Object.entries(pomoEls.durationInputs)) {
+    input.value = pomoMinutes(mode);
+  }
+}
+
+function pomodoroAdvance() {
+  const wasFocus = pomodoro.mode === 'focus';
+  const completed = wasFocus ? pomodoro.completed + 1 : pomodoro.completed;
+  const next = wasFocus
+    ? (completed % POMODORO_CYCLE === 0 ? 'long' : 'short')
+    : 'focus';
+  pomoPlayChime();
+  pomodoro = {
+    mode: next,
+    running: true,
+    endAt: Date.now() + pomoMinutes(next) * 60000,
+    remainingMs: 0,
+    completed,
+    durations: Object.assign({}, pomodoro.durations),
+  };
+  savePomodoroState();
+}
+
+function pomodoroTick() {
+  pomodoro = loadPomodoroState();
+  if (pomodoro.running && pomodoro.endAt - Date.now() <= 0) pomodoroAdvance();
+  renderPomodoro();
+}
+
+function renderPomodoro() {
+  if (!pomoEls) return;
+  const def = POMODORO_MODES[pomodoro.mode];
+  const total = pomoMinutes(pomodoro.mode) * 60000;
+  const rem = Math.min(Math.max(pomoRemaining(), 0), total);
+  const mmss = pomoFormat(rem);
+
+  pomoEls.time.textContent = mmss;
+  pomoEls.phase.textContent = def.label;
+  pomoEls.fg.style.strokeDashoffset = (POMODORO_RING_CIRCUMFERENCE * (1 - rem / total)).toFixed(2);
+  pomoEls.ring.classList.toggle('break', pomodoro.mode !== 'focus');
+  pomoEls.toggle.textContent = pomodoro.running ? 'Pause' : (rem < total ? 'Resume' : 'Start');
+  pomoEls.modes.forEach((b) => b.classList.toggle('active', b.dataset.mode === pomodoro.mode));
+  pomoEls.hint.textContent =
+    pomoMinutes('focus') + ' min focus · ' + pomoMinutes('short') + ' min short break · long break after every ' + POMODORO_CYCLE + ' sessions';
+
+  const filled = pomodoro.completed % POMODORO_CYCLE;
+  pomoEls.dots.forEach((d, i) => d.classList.toggle('done', i < filled));
+
+  document.title = pomodoro.running ? mmss + ' · ' + def.label : 'New Tab';
+  els.pomodoroBtn.classList.toggle('active', pomodoro.running);
+  els.pomodoroBtn.title = pomodoro.running ? 'Pomodoro · ' + mmss + ' — open timer' : 'Pomodoro timer';
+}
+
+function ensurePomoAudio() {
+  try {
+    if (!pomoAudio) pomoAudio = new (window.AudioContext || window.webkitAudioContext)();
+    if (pomoAudio.state === 'suspended') pomoAudio.resume();
+  } catch (e) {
+    /* audio unavailable */
+  }
+}
+
+function pomoPlayChime() {
+  ensurePomoAudio();
+  if (!pomoAudio) return;
+  try {
+    const t = pomoAudio.currentTime;
+    [0, 0.3, 0.6].forEach((off) => {
+      const osc = pomoAudio.createOscillator();
+      const gain = pomoAudio.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, t + off);
+      gain.gain.exponentialRampToValueAtTime(0.2, t + off + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + off + 0.25);
+      osc.connect(gain).connect(pomoAudio.destination);
+      osc.start(t + off);
+      osc.stop(t + off + 0.27);
+    });
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+
+
 /* ---------------- Quotes ---------------- */
 
 function renderQuotes() {
@@ -1066,6 +1541,7 @@ const LAYOUT_KINDS = {
   clock: { selector: '.clock', idAttr: 'clockId', minW: 150 },
   todo:  { selector: '.todo',  idAttr: 'todoId',  minW: 200 },
   quote: { selector: '.quote', idAttr: 'quoteId', minW: 240 },
+  video: { selector: '.video', idAttr: 'videoId', minW: 240 },
 };
 
 function round3(n) {
@@ -1298,6 +1774,7 @@ function bindUi() {
   els.addClockBtn.addEventListener('click', addClock);
   els.addTodoBtn.addEventListener('click', addTodo);
   els.addQuoteBtn.addEventListener('click', addQuote);
+  els.addVideoBtn.addEventListener('click', addVideo);
   els.cycleWallpaperBtn.addEventListener('click', nextWallpaper);
   els.settingsBtn.addEventListener('click', () => els.settingsOverlay.classList.add('open'));
   els.closeSettingsBtn.addEventListener('click', () => els.settingsOverlay.classList.remove('open'));
@@ -1321,7 +1798,10 @@ function bindUi() {
   }, { disabled: () => state.searchPinned });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') els.settingsOverlay.classList.remove('open');
+    if (e.key === 'Escape') {
+      els.settingsOverlay.classList.remove('open');
+      els.pomodoroOverlay.classList.remove('open');
+    }
     const tag = document.activeElement && document.activeElement.tagName;
     if (e.key === '/' && !(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT')) {
       e.preventDefault();
@@ -1343,7 +1823,7 @@ function bindUi() {
   window.addEventListener('focus', flushPendingExternal);
   document.addEventListener('focusout', (e) => {
     const next = e.relatedTarget;
-    if (next && next.closest && next.closest('.note, .todo, .quote, .clock')) return;
+    if (next && next.closest && next.closest('.note, .todo, .quote, .clock, .video')) return;
     flushPendingExternal();
   });
   document.addEventListener('pointerup', flushPendingExternal);
@@ -1396,6 +1876,7 @@ function renderEverything() {
   renderClocks();
   renderTodos();
   renderQuotes();
+  renderVideos();
   syncSettingsUI();
   restartCycleTimer();
   updateAllClocks();
@@ -1406,6 +1887,7 @@ function renderEverything() {
 
 (async function init() {
   await buildWallpapers();
+  await detectVideos();
   const stored = await chrome.storage.local.get(STORAGE_KEY);
   state = mergeState(stored[STORAGE_KEY]);
   if (!WALLPAPERS.some((w) => w.id === state.wallpaper.id)) state.wallpaper.id = WALLPAPERS[0].id;
@@ -1417,6 +1899,7 @@ function renderEverything() {
   bindSearch();
   bindSettings();
   bindUi();
+  initPomodoro();
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
