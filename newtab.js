@@ -331,13 +331,13 @@ function flushPendingExternal() {
     pendingExternal = v;
     return;
   }
-  if (v.saveToken <= state.saveToken) return;
+  if ((Number(v && v.saveToken) || 0) < state.saveToken) return;
   if (stateFingerprint(state) === stateFingerprint(v)) {
-    state.saveToken = v.saveToken;
+    state.saveToken = Math.max(state.saveToken, Number(v.saveToken) || 0);
     return;
   }
   state = mergeState(v);
-  renderEverything();
+  renderChangedCollections();
 }
 
 function queueExternalApply(newValue) {
@@ -521,12 +521,14 @@ function renderTodos() {
 
 function renderTodo(todo) {
   const el = document.createElement('div');
-  el.className = 'todo' + (todo.collapsed ? ' collapsed' : '') + (todo.h ? ' fixed' : '');
+  el.className = 'todo' + (todo.collapsed ? ' collapsed' : '') + (todo.h || todo.hpct ? ' fixed' : '');
   el.dataset.todoId = todo.id;
   el.style.left = clampPct(todo.x) + '%';
   el.style.top = clampPct(todo.y) + '%';
-  if (todo.w) el.style.width = Math.max(200, todo.w) + 'px';
-  if (todo.h) el.style.height = todo.h + 'px';
+  if (todo.wpct != null) el.style.width = todo.wpct + 'vw';
+  else if (todo.w) el.style.width = Math.max(200, todo.w) + 'px';
+  if (todo.hpct != null) el.style.height = todo.hpct + 'vh';
+  else if (todo.h) el.style.height = todo.h + 'px';
 
   el.innerHTML =
     '<div class="todo-header">' +
@@ -545,7 +547,7 @@ function renderTodo(todo) {
   const listEl = el.querySelector('.todo-list');
   const renderTasks = () => {
     listEl.innerHTML = '';
-    for (const task of todo.tasks || []) renderTask(listEl, task, todo, renderTasks);
+    for (const task of sortByPriority(todo.tasks)) renderTask(listEl, task, todo, renderTasks);
   };
   renderTasks();
   el.querySelector('.todo-title').addEventListener('input', (e) => {
@@ -574,12 +576,16 @@ function renderTodo(todo) {
   makeResizable(el, resizeHandle, (w, h) => {
     todo.w = Math.round(w);
     todo.h = Math.round(h);
+    todo.wpct = round3((w / window.innerWidth) * 100);
+    todo.hpct = round3((h / window.innerHeight) * 100);
     el.classList.add('fixed');
     saveState();
   }, { disabled: () => todo.pinned });
   resizeHandle.addEventListener('dblclick', () => {
     delete todo.w;
     delete todo.h;
+    delete todo.wpct;
+    delete todo.hpct;
     el.style.width = '';
     el.style.height = '';
     el.classList.remove('fixed');
@@ -623,19 +629,42 @@ function removeTask(container, id) {
 }
 
 function moveTask(container, id, dir) {
-  if (!container || !Array.isArray(container.tasks)) return false;
-  const idx = container.tasks.findIndex((t) => t && t.id === id);
-  const swap = idx + dir;
-  if (idx === -1 || swap < 0 || swap >= container.tasks.length) return false;
-  const tmp = container.tasks[idx];
-  container.tasks[idx] = container.tasks[swap];
-  container.tasks[swap] = tmp;
-  return true;
+  if (!container) return false;
+  for (const key of ['tasks', 'subtasks']) {
+    const list = container[key];
+    if (!Array.isArray(list) || !list.some((t) => t && t.id === id)) continue;
+    const sorted = sortByPriority(list);
+    const idx = sorted.findIndex((t) => t && t.id === id);
+    const swap = idx + dir;
+    if (swap < 0 || swap >= sorted.length) return false;
+    const tmp = sorted[idx];
+    sorted[idx] = sorted[swap];
+    sorted[swap] = tmp;
+    list.length = 0;
+    for (const t of sorted) list.push(t);
+    return true;
+  }
+  return false;
+}
+
+const PRIORITY_LEVELS = ['none', 'low', 'med', 'high'];
+const PRIORITY_LABELS = { none: 'None', low: 'Low', med: 'Medium', high: 'High' };
+
+function taskPriority(task) {
+  return PRIORITY_LEVELS.includes(task && task.priority) ? task.priority : 'none';
+}
+
+const PRIORITY_RANK = { high: 0, med: 1, low: 2, none: 3 };
+
+function sortByPriority(list) {
+  return [...(list || [])].sort((a, b) =>
+    PRIORITY_RANK[taskPriority(a)] - PRIORITY_RANK[taskPriority(b)]);
 }
 
 function renderTask(listEl, task, container, rerender) {
   const li = document.createElement('li');
-  li.className = 'todo-item' + (task.done ? ' done' : '');
+  li.className = 'todo-item' + (task.done ? ' done' : '') +
+    (taskPriority(task) !== 'none' ? ' p-' + taskPriority(task) : '');
   li.innerHTML =
     '<button type="button" class="todo-check" title="' + (task.done ? 'Mark as not done' : 'Mark as done') + '">' + (task.done ? '✓' : '') + '</button>' +
     '<button type="button" class="todo-sub-toggle" title="Add subtask">＋</button>' +
@@ -643,6 +672,7 @@ function renderTask(listEl, task, container, rerender) {
     '<button type="button" class="todo-move-btn" data-move="-1" title="Move up">↑</button>' +
     '<button type="button" class="todo-move-btn" data-move="1" title="Move down">↓</button>' +
     '<button type="button" class="icon-btn todo-item-del" title="Delete task">✕</button>' +
+    '<button type="button" class="todo-priority-btn" title="Set priority">⚑</button>' +
     '<div class="todo-subarea">' +
       '<ul class="todo-subs"></ul>' +
     '</div>';
@@ -650,7 +680,7 @@ function renderTask(listEl, task, container, rerender) {
   const subsEl = li.querySelector('.todo-subs');
   const renderSubs = () => {
     subsEl.innerHTML = '';
-    for (const sub of task.subtasks || []) renderTask(subsEl, sub, task, renderSubs);
+    for (const sub of sortByPriority(task.subtasks)) renderTask(subsEl, sub, task, renderSubs);
   };
   if (task.subtasks && task.subtasks.length) li.classList.add('sub-open');
   renderSubs();
@@ -678,6 +708,21 @@ function renderTask(listEl, task, container, rerender) {
       }
     });
   });
+
+  const prBtn = li.querySelector('.todo-priority-btn');
+  const syncPrBtn = () => {
+    const cur = taskPriority(task);
+    const next = PRIORITY_LEVELS[(PRIORITY_LEVELS.indexOf(cur) + 1) % PRIORITY_LEVELS.length];
+    prBtn.title = 'Priority: ' + PRIORITY_LABELS[cur] + ' — click to set ' + PRIORITY_LABELS[next];
+  };
+  prBtn.addEventListener('click', () => {
+    const next = PRIORITY_LEVELS[(PRIORITY_LEVELS.indexOf(taskPriority(task)) + 1) % PRIORITY_LEVELS.length];
+    task.priority = next;
+    syncPrBtn();
+    saveState();
+    if (rerender) rerender();
+  });
+  syncPrBtn();
 
   li.querySelector('.todo-sub-toggle').addEventListener('click', () => {
     if (!task.subtasks) task.subtasks = [];
@@ -1338,12 +1383,14 @@ function renderQuotes() {
 
 function renderQuote(quote) {
   const el = document.createElement('div');
-  el.className = 'quote' + (quote.collapsed ? ' collapsed' : '') + (quote.h ? ' fixed' : '');
+  el.className = 'quote' + (quote.collapsed ? ' collapsed' : '') + (quote.h || quote.hpct ? ' fixed' : '');
   el.dataset.quoteId = quote.id;
   el.style.left = clampPct(quote.x) + '%';
   el.style.top = clampPct(quote.y) + '%';
-  if (quote.w) el.style.width = Math.max(240, quote.w) + 'px';
-  if (quote.h) el.style.height = quote.h + 'px';
+  if (quote.wpct != null) el.style.width = quote.wpct + 'vw';
+  else if (quote.w) el.style.width = Math.max(240, quote.w) + 'px';
+  if (quote.hpct != null) el.style.height = quote.hpct + 'vh';
+  else if (quote.h) el.style.height = quote.h + 'px';
 
   el.innerHTML =
     '<div class="quote-header">' +
@@ -1359,7 +1406,7 @@ function renderQuote(quote) {
 
   const textEl = el.querySelector('.quote-text');
   const authorEl = el.querySelector('.quote-author');
-  if (quote.h) textEl.style.overflowY = 'auto';
+  if (quote.h || quote.hpct != null) textEl.style.overflowY = 'auto';
 
   textEl.addEventListener('input', () => {
     quote.text = textEl.innerHTML;
@@ -1392,6 +1439,8 @@ function renderQuote(quote) {
   makeResizable(el, resizeHandle, (w, h) => {
     quote.w = Math.round(w);
     quote.h = Math.round(h);
+    quote.wpct = round3((w / window.innerWidth) * 100);
+    quote.hpct = round3((h / window.innerHeight) * 100);
     el.classList.add('fixed');
     textEl.style.height = '';
     textEl.style.overflowY = 'auto';
@@ -1404,6 +1453,8 @@ function renderQuote(quote) {
   resizeHandle.addEventListener('dblclick', () => {
     delete quote.w;
     delete quote.h;
+    delete quote.wpct;
+    delete quote.hpct;
     el.style.width = '';
     el.style.height = '';
     el.classList.remove('fixed');
@@ -1503,8 +1554,10 @@ function renderNote(note) {
   el.dataset.noteId = note.id;
   el.style.left = clampPct(note.x) + '%';
   el.style.top = clampPct(note.y) + '%';
-  if (note.w) el.style.width = Math.max(180, note.w) + 'px';
-  if (note.h) el.style.height = note.h + 'px';
+  if (note.wpct != null) el.style.width = note.wpct + 'vw';
+  else if (note.w) el.style.width = Math.max(180, note.w) + 'px';
+  if (note.hpct != null) el.style.height = note.hpct + 'vh';
+  else if (note.h) el.style.height = note.h + 'px';
 
   el.innerHTML =
     '<div class="note-header">' +
@@ -1525,7 +1578,7 @@ function renderNote(note) {
 
   const ta = el.querySelector('.note-text');
   ta.innerHTML = htmlFromText(note.text);
-  if (note.h) ta.style.overflowY = 'auto';
+  if (note.h || note.hpct != null) ta.style.overflowY = 'auto';
   else autosize(ta);
 
   el.querySelector('.note-title').addEventListener('input', (e) => {
@@ -1535,7 +1588,7 @@ function renderNote(note) {
 
   ta.addEventListener('input', () => {
     note.text = ta.innerHTML;
-    if (!note.h) autosize(ta);
+    if (!note.h && note.hpct == null) autosize(ta);
     saveState();
   });
 
@@ -1549,7 +1602,7 @@ function renderNote(note) {
     ta.focus();
     document.execCommand(btn.dataset.fmt, false);
     note.text = ta.innerHTML;
-    if (!note.h) autosize(ta);
+    if (!note.h && note.hpct == null) autosize(ta);
     saveState();
   });
 
@@ -1581,6 +1634,8 @@ function renderNote(note) {
   makeResizable(el, resizeHandle, (w, h) => {
     note.w = Math.round(w);
     note.h = Math.round(h);
+    note.wpct = round3((w / window.innerWidth) * 100);
+    note.hpct = round3((h / window.innerHeight) * 100);
     ta.style.height = '';
     ta.style.overflowY = 'auto';
     saveState();
@@ -1588,6 +1643,8 @@ function renderNote(note) {
   resizeHandle.addEventListener('dblclick', () => {
     delete note.w;
     delete note.h;
+    delete note.wpct;
+    delete note.hpct;
     el.style.width = '';
     el.style.height = '';
     ta.style.overflowY = '';
@@ -1782,6 +1839,8 @@ function applyLayout(layout) {
     obj.x = clampPct(entry.x);
     obj.y = clampPct(entry.y);
     if (entry.fixed && entry.w != null && entry.h != null) {
+      obj.wpct = round3(Math.max((spec.minW / vw) * 100, entry.w));
+      obj.hpct = round3(Math.max((60 / vh) * 100, entry.h));
       obj.w = Math.max(spec.minW, Math.round((entry.w / 100) * vw));
       obj.h = Math.max(60, Math.round((entry.h / 100) * vh));
     }
@@ -2061,6 +2120,42 @@ function renderEverything() {
   renderMusic();
   syncSettingsUI();
   restartCycleTimer();
+  updateAllClocks();
+  fitAllWidgets();
+  renderedPrints = collectionPrints(state);
+}
+
+let renderedPrints = null;
+
+function collectionPrints(st) {
+  return {
+    wallpaper: JSON.stringify(st.wallpaper),
+    settings: JSON.stringify(st.settings),
+    search: JSON.stringify([st.searchPos, st.searchPinned]),
+    notes: JSON.stringify(st.notes),
+    clocks: JSON.stringify(st.clocks),
+    todos: JSON.stringify(st.todos),
+    quotes: JSON.stringify(st.quotes),
+    music: JSON.stringify(st.music),
+  };
+}
+
+function renderChangedCollections() {
+  const prev = renderedPrints || {};
+  const next = collectionPrints(state);
+  renderedPrints = next;
+  if (prev.wallpaper !== next.wallpaper || prev.settings !== next.settings) {
+    applyWallpaper(wallpaperById(state.wallpaper.id));
+    applyGlobalFont();
+    restartCycleTimer();
+  }
+  if (prev.search !== next.search) applySearchPos();
+  if (prev.notes !== next.notes) renderNotes();
+  if (prev.clocks !== next.clocks) renderClocks();
+  if (prev.todos !== next.todos) renderTodos();
+  if (prev.quotes !== next.quotes) renderQuotes();
+  if (prev.music !== next.music) renderMusic();
+  syncSettingsUI();
   updateAllClocks();
   fitAllWidgets();
 }
