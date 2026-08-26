@@ -648,7 +648,6 @@ function moveTask(container, id, dir) {
 }
 
 const PRIORITY_LEVELS = ['none', 'low', 'med', 'high'];
-const PRIORITY_LABELS = { none: 'None', low: 'Low', med: 'Medium', high: 'High' };
 
 function taskPriority(task) {
   return PRIORITY_LEVELS.includes(task && task.priority) ? task.priority : 'none';
@@ -672,7 +671,11 @@ function renderTask(listEl, task, container, rerender) {
     '<button type="button" class="todo-move-btn" data-move="-1" title="Move up">↑</button>' +
     '<button type="button" class="todo-move-btn" data-move="1" title="Move down">↓</button>' +
     '<button type="button" class="icon-btn todo-item-del" title="Delete task">✕</button>' +
-    '<button type="button" class="todo-priority-btn" title="Set priority">⚑</button>' +
+    '<span class="todo-urgency">' +
+      '<label class="urgency-check u-low" title="Low urgency"><input type="checkbox" value="low" tabindex="-1"><i></i></label>' +
+      '<label class="urgency-check u-med" title="Medium urgency"><input type="checkbox" value="med" tabindex="-1"><i></i></label>' +
+      '<label class="urgency-check u-high" title="High urgency"><input type="checkbox" value="high" tabindex="-1"><i></i></label>' +
+    '</span>' +
     '<div class="todo-subarea">' +
       '<ul class="todo-subs"></ul>' +
     '</div>';
@@ -709,20 +712,21 @@ function renderTask(listEl, task, container, rerender) {
     });
   });
 
-  const prBtn = li.querySelector('.todo-priority-btn');
-  const syncPrBtn = () => {
+  const urgencyWrap = li.querySelector('.todo-urgency');
+  const syncUrgency = () => {
     const cur = taskPriority(task);
-    const next = PRIORITY_LEVELS[(PRIORITY_LEVELS.indexOf(cur) + 1) % PRIORITY_LEVELS.length];
-    prBtn.title = 'Priority: ' + PRIORITY_LABELS[cur] + ' — click to set ' + PRIORITY_LABELS[next];
+    urgencyWrap.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      cb.checked = cb.value === cur;
+    });
   };
-  prBtn.addEventListener('click', () => {
-    const next = PRIORITY_LEVELS[(PRIORITY_LEVELS.indexOf(taskPriority(task)) + 1) % PRIORITY_LEVELS.length];
-    task.priority = next;
-    syncPrBtn();
+  urgencyWrap.addEventListener('change', (e) => {
+    if (e.target.tagName !== 'INPUT') return;
+    task.priority = e.target.checked && PRIORITY_LEVELS.includes(e.target.value) ? e.target.value : 'none';
+    syncUrgency();
     saveState();
     if (rerender) rerender();
   });
-  syncPrBtn();
+  syncUrgency();
 
   li.querySelector('.todo-sub-toggle').addEventListener('click', () => {
     if (!task.subtasks) task.subtasks = [];
