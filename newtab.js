@@ -778,27 +778,30 @@ function isVideoName(name) {
 }
 
 async function detectVideos() {
-  let names = [];
+  const allNames = [];
   try {
-    names = await listPackagedVideos();
+    const packaged = await listPackagedVideos();
+    allNames.push(...packaged);
   } catch (e) {
     console.warn('[dashboard] Package folder scan failed:', e);
   }
-  if (!names.length) {
-    try {
-      names = await fetchPlaylistNames();
-    } catch (e) {
-      console.warn('[dashboard] Playlist manifest scan failed:', e);
+  try {
+    const fromPlaylist = await fetchPlaylistNames();
+    for (const n of fromPlaylist) {
+      if (!allNames.includes(n)) allNames.push(n);
     }
+  } catch (e) {
+    console.warn('[dashboard] Playlist manifest scan failed:', e);
   }
-  if (!names.length) {
+  if (!allNames.length) {
     try {
-      names = await probeNumberedVideos();
+      const probed = await probeNumberedVideos();
+      allNames.push(...probed);
     } catch (e) {
       /* ignore */
     }
   }
-  names = [...new Set(names)];
+  const names = [...new Set(allNames)];
   names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
   videoLibrary = names.map((name) => ({ name, src: chrome.runtime.getURL('videos/' + name) }));
 }
@@ -893,9 +896,9 @@ function reshuffleDeck(prevName) {
 
 function syncVideoOrder() {
   const names = videoLibrary.map((v) => v.name);
-  const matches = videoState.order.length === names.length &&
-    videoState.order.every((n, i) => names[i] === n);
-  if (!matches) reshuffleDeck(null);
+  const isValid = videoState.order.length === names.length &&
+    videoState.order.every((n) => names.includes(n));
+  if (!isValid) reshuffleDeck(null);
   if (videoState.pos < 0 || videoState.pos >= videoState.order.length) videoState.pos = 0;
 }
 
@@ -912,15 +915,35 @@ function initVideoPlayer() {
     count: els.videoOverlay.querySelector('.video-count'),
     navBtns: els.videoOverlay.querySelectorAll('.video-nav-btn'),
     openBtn: els.videoOverlay.querySelector('.video-open-btn'),
+    refreshBtn: els.videoOverlay.querySelector('.video-refresh-btn'),
   };
 
   videoEls.navBtns.forEach((btn) => {
     btn.addEventListener('click', () => stepVideo(Number(btn.dataset.dir)));
   });
   videoEls.openBtn.addEventListener('click', () => {
-    const item = videoLibrary[videoState.index];
+    const item = currentVideoItem();
     if (!item) return;
     chrome.tabs.create({ url: item.src });
+  });
+  videoEls.refreshBtn.addEventListener('click', async () => {
+    const btn = videoEls.refreshBtn;
+    btn.disabled = true;
+    btn.classList.add('spinning');
+    try {
+      await detectVideos();
+      videoState.order = [];
+      videoState.pos = 0;
+      reshuffleDeck(null);
+      applyVideoSource();
+      saveVideoState();
+    } catch (e) {
+      console.warn('[dashboard] Refresh playlist failed:', e);
+    }
+    setTimeout(() => {
+      btn.classList.remove('spinning');
+      btn.disabled = false;
+    }, 600);
   });
 
   els.addVideoBtn.addEventListener('click', openVideoPlayer);
