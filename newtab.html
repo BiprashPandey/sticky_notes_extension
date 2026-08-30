@@ -25,19 +25,10 @@
     <div class="tool-group">
       <button type="button" class="tool-btn" id="cycleWallpaperBtn" title="Next wallpaper">🎨</button>
       <button type="button" class="tool-btn" id="pomodoroBtn" title="Pomodoro timer">🍅</button>
+      <button type="button" class="tool-btn" id="saveBtn" title="Save all changes">💾</button>
       <button type="button" class="tool-btn" id="settingsBtn" title="Dashboard settings">⚙</button>
     </div>
   </header>
-
-  <form class="search-form" id="searchForm" autocomplete="off" spellcheck="false" title="Drag to move — press / to focus">
-    <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
-      <circle cx="11" cy="11" r="7"></circle>
-      <path d="m20 20-3.5-3.5"></path>
-    </svg>
-    <input class="search-input" id="searchInput" type="text" placeholder="Search Google or type a URL">
-    <button type="button" class="search-pin" id="searchPinBtn" title="Pin position">📌</button>
-    <button type="submit" class="search-btn" title="Search">↵</button>
-  </form>
 
   <div class="widgets" id="widgets"></div>
 
@@ -52,14 +43,6 @@
         <label class="field-label" for="fontInput">Interface font</label>
         <select class="select-input" id="fontInput"></select>
         <p class="field-hint">Applies to every widget at once: notes, clocks, and buttons.</p>
-      </section>
-
-      <section class="field-group">
-        <span class="field-label">Google search opens in</span>
-        <div class="radio-row">
-          <label><input type="radio" name="searchMode" value="currentTab"> This tab</label>
-          <label><input type="radio" name="searchMode" value="newTab"> New tab</label>
-        </div>
       </section>
 
       <section class="field-group">

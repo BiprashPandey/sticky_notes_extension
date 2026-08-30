@@ -7,9 +7,8 @@ A feature-rich Chrome extension (Manifest V3) that replaces the default `chrome:
 - **To-do lists** — the **＋ To Dos** button adds a glass-themed, draggable checklist with its own **collapse/expand button and corner resize handle**: add tasks (Enter), tick them off (✓ circle), edit a task by clicking its text, delete individual tasks, rename or delete the whole list. Every task has a **＋ subtask button**: click it to add subtasks, which nest recursively (sub-subtasks, etc.) with their own checkboxes and delete buttons. Grab the widget body anywhere to drag it, just like clocks; **📌 pin locks it down.**
 - **Quotes** — the **＋ Quote** button adds a glass quote card matching the to-do and clock style: click the text to write your own quote and add an attribution, collapse or delete it, drag it anywhere, resize it via the bottom-right corner (double-click to reset), or **📌 pin it.**
 - **Floating world clocks** — no central clock; add unlimited clock widgets and drag any of them anywhere (grab the widget body or header), or **📌 pin them** to freeze their spot. Each offers 36 curated timezones or the full IANA list, and can be renamed. New clocks are auto-placed in a tidy row next to the existing ones.
-- **Google search bar** — glass pill that is itself draggable (grab its icon/edges; press `/` to focus it); a 📌 button pins it in place. Enter or the ↵ button searches Google in the current tab or a new tab (configurable in Settings).
-- **Free placement** — notes, clocks, quotes, to-do lists, and the search bar are all draggable individually (use 📌 to lock any of them). Positions are stored as **viewport ratios (percentages)**, so layout scales with the window; everything is clamped to stay fully on-screen and re-clamped live when you resize the tab. Widget widths, paddings, gaps, and fonts use `vw`/`vh`/`clamp()` units, so the whole dashboard scales proportionally from a laptop to a large monitor. Widget sizes you set manually (resize handle) are kept in pixels as-is.
-- **Global JetBrains Mono font** — the bundled variable font (100–800 weights, `fonts/JetBrainsMono.woff2`) is applied to every element: notes, clocks, + Note/+ Clock buttons, the search bar, and settings. The Settings → Interface font picker switches all of them at once.
+- **Free placement** — notes, clocks, quotes, and to-do lists are all draggable individually (use 📌 to lock any of them). Positions are stored as **viewport ratios (percentages)**, so layout scales with the window; everything is clamped to stay fully on-screen and re-clamped live when you resize the tab. Widget widths, paddings, gaps, and fonts use `vw`/`vh`/`clamp()` units, so the whole dashboard scales proportionally from a laptop to a large monitor. Widget sizes you set manually (resize handle) are kept in pixels as-is.
+- **Global JetBrains Mono font** — the bundled variable font (100–800 weights, `fonts/JetBrainsMono.woff2`) is applied to every element: notes, clocks, + Note/+ Clock buttons, and settings. The Settings → Interface font picker switches all of them at once.
 - **Extras** — multi-window sync, export/import/reset of all data.
 
 ## File structure
@@ -17,9 +16,9 @@ A feature-rich Chrome extension (Manifest V3) that replaces the default `chrome:
 ```
 sticky_notes_extension/
 ├── manifest.json              # MV3 config: chrome_url_overrides + storage permission
-├── newtab.html                # Search bar, widget containers, settings drawer
+├── newtab.html                # Widget containers, settings drawer
 ├── newtab.css                 # Glassmorphism UI, sticky notes, clock widgets, gallery
-├── newtab.js                  # State, storage, drag & drop, timezone math, search
+├── newtab.js                  # State, storage, drag & drop, timezone math
 ├── icons/                     # Generated extension icons (16/48/128)
 ├── wallpapers/                # 24 local wallpapers (already downloaded)
 ├── fonts/                     # Bundled JetBrains Mono variable font (offline-safe)
@@ -39,13 +38,12 @@ sticky_notes_extension/
 
 | Feature | How to test |
 | --- | --- |
-| Search | Type a query, press Enter — Google results open in the current tab. Change to "New tab" in Settings. Press `/` anywhere to jump to the search bar; drag the bar by its icon/edges to move it; click 📌 to pin it. |
 | Wallpaper | Click 🎨 to cycle; open Settings → Wallpaper to pick any thumbnail; set auto-cycle in Settings → Wallpaper auto-cycle. |
 | Sticky notes | Click **＋ Note**; type a heading and body (auto-saves). Select body text and press **B/I/U/S** to format it, or use Ctrl+B/Ctrl+I/Ctrl+U. Drag by the header. Cycle color with 🎨, collapse with `–` (title stays visible), delete with `✕`. Drag the bottom-right corner to resize (double-click the corner to restore the default size). Click **📌** to pin — position and size stay locked. |
 | To-do lists | Click **＋ To Dos** — a draggable glass checklist appears (drag it anywhere, like a clock). Type a task and press Enter to add; click the circle to check/uncheck; click a task's text to edit it; press the **＋** next to a task to add nested subtasks (repeatable to any depth); use `–` to collapse the list; use ✕ to delete a task or the whole list. Drag the bottom-right corner to resize (double-click to reset); click **📌** to pin. |
 | Quotes | Click **＋ Quote** — a glass quote card appears; click its text to write your own quote (or keep the sample), type an attribution below it, collapse with `–`, delete with `✕`, and drag it anywhere. Drag the bottom-right corner to resize (double-click to reset); click **📌** to pin. |
 | Clocks | Click **＋ Clock** — the new clock is auto-placed next to the previous ones; drag it anywhere by its body or header (or **📌** pin it), pick a timezone (e.g. Kathmandu, Tokyo, UTC), rename it, delete with `✕`. |
-| Interface font | Settings → Interface font: change it and watch notes, clocks, + Note/+ Clock buttons, and the search bar all switch at once. |
+| Interface font | Settings → Interface font: change it and watch notes, clocks, + Note/+ Clock buttons all switch at once. |
 | Persistence | Reload the tab / close Chrome / open a second window — notes, clocks, wallpaper, and positions all survive. |
 | Data | Settings → Data: Export downloads a JSON backup; Import restores it; Reset wipes everything. |
 

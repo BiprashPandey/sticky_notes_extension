@@ -134,108 +134,15 @@ body.ready {
   transform: scale(0.95);
 }
 
+.tool-btn.saved {
+  background: rgba(74, 222, 128, 0.22);
+  border-color: rgba(74, 222, 128, 0.6);
+  color: #4ade80;
+}
+
 .tool-ico {
   font-size: clamp(12px, 1vw, 17px);
   line-height: 1;
-}
-
-/* ---------- Search bar ---------- */
-
-.search-form {
-  position: fixed;
-  left: 0;
-  top: 26px;
-  z-index: 15;
-  display: flex;
-  align-items: center;
-  gap: clamp(6px, 0.8vw, 14px);
-  width: clamp(300px, 34vw, 680px);
-  padding: clamp(8px, 0.9vh, 14px) clamp(12px, 1.2vw, 22px);
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: var(--glass-strong);
-  backdrop-filter: blur(18px) saturate(1.4);
-  box-shadow: var(--shadow);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  pointer-events: auto;
-  touch-action: none;
-  font-family: var(--ui-font);
-}
-
-.search-form:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow);
-}
-
-.search-ico {
-  width: clamp(14px, 1.2vw, 22px);
-  height: clamp(14px, 1.2vw, 22px);
-  color: var(--text-dim);
-  flex: none;
-}
-
-.search-input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--text);
-  font-family: var(--ui-font);
-  font-size: clamp(13px, 0.9vw, 17px);
-}
-
-.search-input::placeholder {
-  color: var(--text-dim);
-}
-
-.search-btn {
-  flex: none;
-  width: clamp(28px, 2vw, 40px);
-  height: clamp(28px, 2vw, 40px);
-  border: none;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #0b1220;
-  font-family: var(--ui-font);
-  font-size: clamp(14px, 1vw, 18px);
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.12s ease, filter 0.15s ease;
-}
-
-.search-btn:hover {
-  filter: brightness(1.12);
-}
-
-.search-btn:active {
-  transform: scale(0.92);
-}
-
-.search-pin {
-  flex: none;
-  width: clamp(26px, 1.8vw, 36px);
-  height: clamp(26px, 1.8vw, 36px);
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text-dim);
-  font-size: clamp(12px, 0.9vw, 16px);
-  line-height: 1;
-  cursor: pointer;
-  opacity: 0.8;
-  transition: opacity 0.15s ease, background 0.15s ease;
-}
-
-.search-pin:hover {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.search-pin.pinned {
-  color: var(--accent);
-  background: var(--accent-soft);
-  opacity: 1;
 }
 
 /* ---------- Widgets (clocks + notes) ---------- */
@@ -304,8 +211,7 @@ body.ready {
 .todo.pinned,
 .quote.pinned,
 .routine.pinned,
-.video.pinned,
-.search-form.pinned {
+.video.pinned {
   cursor: default;
 }
 
@@ -1845,10 +1751,6 @@ body.ready {
 @media (max-width: 820px) {
   .tool-btn .tl {
     display: none;
-  }
-
-  .search-form {
-    width: clamp(260px, 52vw, 480px);
   }
 }
 

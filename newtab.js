@@ -130,9 +130,6 @@ const clockEls = new Map();
 const els = {
   bgLayer: document.getElementById('bgLayer'),
   widgets: document.getElementById('widgets'),
-  searchForm: document.getElementById('searchForm'),
-  searchInput: document.getElementById('searchInput'),
-  searchPinBtn: document.getElementById('searchPinBtn'),
   addNoteBtn: document.getElementById('addNoteBtn'),
   addClockBtn: document.getElementById('addClockBtn'),
   addTodoBtn: document.getElementById('addTodoBtn'),
@@ -141,6 +138,7 @@ const els = {
   addVideoBtn: document.getElementById('addVideoBtn'),
   cycleWallpaperBtn: document.getElementById('cycleWallpaperBtn'),
   pomodoroBtn: document.getElementById('pomodoroBtn'),
+  saveBtn: document.getElementById('saveBtn'),
   pomodoroOverlay: document.getElementById('pomodoroOverlay'),
   closePomodoroBtn: document.getElementById('closePomodoroBtn'),
   videoOverlay: document.getElementById('videoOverlay'),
@@ -164,7 +162,6 @@ const els = {
   settingsOverlay: document.getElementById('settingsOverlay'),
   closeSettingsBtn: document.getElementById('closeSettingsBtn'),
   saveLayoutBtn: document.getElementById('saveLayoutBtn'),
-  searchModeRadios: document.querySelectorAll('input[name="searchMode"]'),
   fontInput: document.getElementById('fontInput'),
   cycleInput: document.getElementById('cycleInput'),
   wpGallery: document.getElementById('wpGallery'),
@@ -211,7 +208,6 @@ function fitWidget(el) {
 
 function fitAllWidgets() {
   els.widgets.querySelectorAll('.note, .clock, .todo, .quote, .routine').forEach(fitWidget);
-  fitWidget(els.searchForm);
 }
 
 function pct(v) {
@@ -231,18 +227,15 @@ function freshState() {
     saveToken: 0,
     settings: {
       font: 'default',
-      searchMode: 'currentTab',
       defaultNoteColor: 'yellow',
       cycleMinutes: 0,
     },
     wallpaper: { id: 'g7' },
-    searchPos: { x: 50, y: 3.2, centered: true },
-    searchPinned: false,
     notes: [
       {
         id: uid(),
         title: 'Welcome',
-        text: 'Welcome to your dashboard!\n\nDrag this note by its header to move it around.\nChange its color, collapse or delete it from the header.\n\nTip: press / to search Google.',
+        text: 'Welcome to your dashboard!\n\nDrag this note by its header to move it around.\nChange its color, collapse or delete it from the header.',
         color: 'yellow',
         collapsed: false,
         pinned: false,
@@ -273,12 +266,6 @@ function mergeState(stored) {
       font: (s.settings && (s.settings.font || s.settings.defaultNoteFont)) || base.settings.font,
     }),
     wallpaper: Object.assign({}, base.wallpaper, s.wallpaper || {}),
-    searchPos: Object.assign({
-      x: 50,
-      y: 3.2,
-      centered: !(s.searchPos && typeof s.searchPos === 'object'),
-    }, s.searchPos || {}),
-    searchPinned: !!s.searchPinned,
     notes: Array.isArray(s.notes) ? s.notes.filter((n) => n && typeof n === 'object') : [],
     clocks: Array.isArray(s.clocks) ? s.clocks.filter((c) => c && typeof c === 'object') : [],
     todos: Array.isArray(s.todos) ? s.todos.filter((t) => t && typeof t === 'object') : [],
@@ -293,19 +280,23 @@ function mergeState(stored) {
   };
 }
 
+function persistState() {
+  if (pendingExternal) flushPendingExternal();
+  chrome.storage.local.set({ [STORAGE_KEY]: JSON.parse(JSON.stringify(state)) });
+}
+
 function saveState(immediate) {
   state.saveToken = (state.saveToken || 0) + 1;
   if (saveTimer) clearTimeout(saveTimer);
-  const doSave = () => chrome.storage.local.set({ [STORAGE_KEY]: JSON.parse(JSON.stringify(state)) });
-  if (immediate) doSave();
-  else saveTimer = setTimeout(doSave, 250);
+  if (immediate) persistState();
+  else saveTimer = setTimeout(persistState, 250);
 }
 
 function flushPendingSave() {
   if (!saveTimer) return;
   clearTimeout(saveTimer);
   saveTimer = null;
-  chrome.storage.local.set({ [STORAGE_KEY]: JSON.parse(JSON.stringify(state)) });
+  persistState();
 }
 
 function stateFingerprint(st) {
@@ -314,12 +305,29 @@ function stateFingerprint(st) {
   return JSON.stringify(copy);
 }
 
-function isUserInteracting() {
-  if (els.widgets.querySelector('.dragging')) return true;
+const WIDGET_FOCUS_MAP = [
+  ['.note', 'notes'],
+  ['.todo', 'todos'],
+  ['.quote', 'quotes'],
+  ['.clock', 'clocks'],
+  ['.routine', 'routines'],
+];
+
+function focusedCollectionKey() {
   const a = document.activeElement;
-  if (!a || !a.closest) return false;
-  return !!a.closest('.note, .todo, .quote, .clock, .routine, .video') &&
-    (a.isContentEditable || a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT');
+  if (!a || !a.closest) return null;
+  for (const [sel, key] of WIDGET_FOCUS_MAP) {
+    if (a.closest(sel)) return key;
+  }
+  return null;
+}
+
+function applyExternalSmart(v) {
+  const merged = mergeState(v);
+  const focus = focusedCollectionKey();
+  if (focus && Array.isArray(merged[focus])) merged[focus] = state[focus];
+  state = merged;
+  renderChangedCollections(focus ? [focus] : null);
 }
 
 function flushPendingExternal() {
@@ -330,17 +338,17 @@ function flushPendingExternal() {
   if (!pendingExternal) return;
   const v = pendingExternal;
   pendingExternal = null;
-  if (isUserInteracting() || document.visibilityState === 'hidden') {
-    pendingExternal = v;
-    return;
-  }
   if ((Number(v && v.saveToken) || 0) < state.saveToken) return;
   if (stateFingerprint(state) === stateFingerprint(v)) {
     state.saveToken = Math.max(state.saveToken, Number(v.saveToken) || 0);
     return;
   }
-  state = mergeState(v);
-  renderChangedCollections();
+  if (document.visibilityState === 'hidden' || els.widgets.querySelector('.dragging')) {
+    pendingExternal = v;
+    externalApplyTimer = setTimeout(() => flushPendingExternal(), 400);
+    return;
+  }
+  applyExternalSmart(v);
 }
 
 function queueExternalApply(newValue) {
@@ -2059,15 +2067,6 @@ function captureLayout() {
     });
   }
 
-  const sr = els.searchForm.getBoundingClientRect();
-  widgets.push({
-    kind: 'search',
-    x: round3(pct(els.searchForm.style.left)),
-    y: round3(pct(els.searchForm.style.top)),
-    w: round3((sr.width / vw) * 100),
-    h: round3((sr.height / vh) * 100),
-  });
-
   const layout = {
     version: 1,
     savedAt: Date.now(),
@@ -2082,12 +2081,6 @@ function applyLayout(layout) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   for (const entry of layout.widgets || []) {
-    if (entry.kind === 'search') {
-      state.searchPos.x = clampPct(entry.x);
-      state.searchPos.y = clampPct(entry.y);
-      state.searchPos.centered = false;
-      continue;
-    }
     const spec = LAYOUT_KINDS[entry.kind];
     if (!spec) continue;
     const arr = state[entry.kind + 's'];
@@ -2171,22 +2164,6 @@ function addClock() {
   renderClocks();
 }
 
-/* ---------------- Search ---------------- */
-
-function bindSearch() {
-  els.searchForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const q = els.searchInput.value.trim();
-    if (!q) return;
-    const url = 'https://www.google.com/search?q=' + encodeURIComponent(q);
-    if (state.settings.searchMode === 'currentTab') {
-      window.location.href = url;
-    } else {
-      chrome.tabs.create({ url });
-    }
-  });
-}
-
 /* ---------------- Settings ---------------- */
 
 function applyGlobalFont() {
@@ -2194,34 +2171,11 @@ function applyGlobalFont() {
   document.documentElement.style.setProperty('--ui-font', f.stack);
 }
 
-function applySearchPos() {
-  const p = state.searchPos || { x: 50, y: 3.2 };
-  let x = Number(p.x);
-  if (p.centered && isFinite(x)) {
-    const w = Math.min(els.searchForm.offsetWidth, window.innerWidth);
-    x = x - (w / window.innerWidth) * 50;
-  }
-  els.searchForm.style.left = (isFinite(x) ? x : 50) + '%';
-  els.searchForm.style.top = (isFinite(Number(p.y)) ? Number(p.y) : 3.2) + '%';
-  els.searchForm.classList.toggle('pinned', !!state.searchPinned);
-  els.searchPinBtn.classList.toggle('pinned', !!state.searchPinned);
-  els.searchPinBtn.title = state.searchPinned ? 'Unpin position' : 'Pin position';
-}
-
 function bindSettings() {
   els.fontInput.addEventListener('change', (e) => {
     state.settings.font = e.target.value;
     applyGlobalFont();
     saveState();
-  });
-
-  els.searchModeRadios.forEach((r) => {
-    r.addEventListener('change', () => {
-      if (r.checked) {
-        state.settings.searchMode = r.value;
-        saveState();
-      }
-    });
   });
 
   els.cycleInput.addEventListener('change', (e) => {
@@ -2253,9 +2207,6 @@ function bindSettings() {
 
 function syncSettingsUI() {
   els.fontInput.value = state.settings.font || 'default';
-  els.searchModeRadios.forEach((r) => {
-    r.checked = state.settings.searchMode === r.value;
-  });
   els.cycleInput.value = String(state.settings.cycleMinutes || 0);
 }
 
@@ -2266,26 +2217,12 @@ function bindUi() {
   els.addRoutineBtn.addEventListener('click', addRoutine);
   els.addQuoteBtn.addEventListener('click', addQuote);
   els.cycleWallpaperBtn.addEventListener('click', nextWallpaper);
+  els.saveBtn.addEventListener('click', manualSave);
   els.settingsBtn.addEventListener('click', () => els.settingsOverlay.classList.add('open'));
   els.closeSettingsBtn.addEventListener('click', () => els.settingsOverlay.classList.remove('open'));
   els.settingsOverlay.addEventListener('click', (e) => {
     if (e.target === els.settingsOverlay) els.settingsOverlay.classList.remove('open');
   });
-
-  els.searchPinBtn.addEventListener('click', () => {
-    state.searchPinned = !state.searchPinned;
-    applySearchPos();
-    saveState();
-  });
-
-  makeDraggable(els.searchForm, els.searchForm, () => {
-    state.searchPos = {
-      x: pct(els.searchForm.style.left),
-      y: pct(els.searchForm.style.top),
-      centered: false,
-    };
-    saveState();
-  }, { disabled: () => state.searchPinned });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -2301,11 +2238,6 @@ function bindUi() {
       if (e.key === 'ArrowLeft') { e.preventDefault(); stepVideo(-1); }
       if (e.key === 'ArrowRight') { e.preventDefault(); stepVideo(1); }
       return;
-    }
-    if (e.key === '/' && !typing) {
-      e.preventDefault();
-      els.searchInput.focus();
-      els.searchInput.select();
     }
   });
 
@@ -2365,12 +2297,33 @@ function resetData() {
   renderEverything();
 }
 
+let saveFlashTimer = null;
+
+function manualSave() {
+  const a = document.activeElement;
+  if (a && typeof a.blur === 'function' && a.closest && a.closest('.note, .todo, .quote, .clock, .routine, .video')) {
+    try {
+      a.blur();
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  flushPendingSave();
+  saveState(true);
+  els.saveBtn.classList.add('saved');
+  els.saveBtn.textContent = '✓';
+  if (saveFlashTimer) clearTimeout(saveFlashTimer);
+  saveFlashTimer = setTimeout(() => {
+    els.saveBtn.classList.remove('saved');
+    els.saveBtn.textContent = '💾';
+  }, 1400);
+}
+
 /* ---------------- Render ---------------- */
 
 function renderEverything() {
   applyWallpaper(wallpaperById(state.wallpaper.id));
   applyGlobalFont();
-  applySearchPos();
   renderNotes();
   renderClocks();
   renderTodos();
@@ -2390,7 +2343,6 @@ function collectionPrints(st) {
   return {
     wallpaper: JSON.stringify(st.wallpaper),
     settings: JSON.stringify(st.settings),
-    search: JSON.stringify([st.searchPos, st.searchPinned]),
     notes: JSON.stringify(st.notes),
     clocks: JSON.stringify(st.clocks),
     todos: JSON.stringify(st.todos),
@@ -2400,22 +2352,25 @@ function collectionPrints(st) {
   };
 }
 
-function renderChangedCollections() {
+function renderChangedCollections(skip) {
+  skip = skip || [];
   const prev = renderedPrints || {};
   const next = collectionPrints(state);
   renderedPrints = next;
-  if (prev.wallpaper !== next.wallpaper || prev.settings !== next.settings) {
-    applyWallpaper(wallpaperById(state.wallpaper.id));
-    applyGlobalFont();
+  const chk = (k) => skip.indexOf(k) === -1;
+  const wpChanged = chk('wallpaper') && prev.wallpaper !== next.wallpaper;
+  const setChanged = chk('settings') && prev.settings !== next.settings;
+  if (wpChanged || setChanged) {
+    if (wpChanged) applyWallpaper(wallpaperById(state.wallpaper.id));
+    if (setChanged) applyGlobalFont();
     restartCycleTimer();
   }
-  if (prev.search !== next.search) applySearchPos();
-  if (prev.notes !== next.notes) renderNotes();
-  if (prev.clocks !== next.clocks) renderClocks();
-  if (prev.todos !== next.todos) renderTodos();
-  if (prev.routines !== next.routines) renderRoutines();
-  if (prev.quotes !== next.quotes) renderQuotes();
-  if (prev.music !== next.music) renderMusic();
+  if (chk('notes') && prev.notes !== next.notes) renderNotes();
+  if (chk('clocks') && prev.clocks !== next.clocks) renderClocks();
+  if (chk('todos') && prev.todos !== next.todos) renderTodos();
+  if (chk('routines') && prev.routines !== next.routines) renderRoutines();
+  if (chk('quotes') && prev.quotes !== next.quotes) renderQuotes();
+  if (chk('music') && prev.music !== next.music) renderMusic();
   syncSettingsUI();
   updateAllClocks();
   fitAllWidgets();
@@ -2434,7 +2389,6 @@ function renderChangedCollections() {
     .map(([k, f]) => '<option value="' + k + '">' + f.label + '</option>')
     .join('');
 
-  bindSearch();
   bindSettings();
   bindUi();
   initPomodoro();
@@ -2451,5 +2405,6 @@ function renderChangedCollections() {
   applySavedLayout();
   renderEverything();
   setInterval(updateAllClocks, 1000);
+  setInterval(flushPendingSave, 800);
   document.body.classList.add('ready');
 })();
