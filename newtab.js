@@ -136,6 +136,7 @@ const els = {
   addNoteBtn: document.getElementById('addNoteBtn'),
   addClockBtn: document.getElementById('addClockBtn'),
   addTodoBtn: document.getElementById('addTodoBtn'),
+  addRoutineBtn: document.getElementById('addRoutineBtn'),
   addQuoteBtn: document.getElementById('addQuoteBtn'),
   addVideoBtn: document.getElementById('addVideoBtn'),
   cycleWallpaperBtn: document.getElementById('cycleWallpaperBtn'),
@@ -209,7 +210,7 @@ function fitWidget(el) {
 }
 
 function fitAllWidgets() {
-  els.widgets.querySelectorAll('.note, .clock, .todo, .quote').forEach(fitWidget);
+  els.widgets.querySelectorAll('.note, .clock, .todo, .quote, .routine').forEach(fitWidget);
   fitWidget(els.searchForm);
 }
 
@@ -254,6 +255,7 @@ function freshState() {
       { id: uid(), timezone: 'Asia/Kathmandu', label: 'Kathmandu', pinned: false },
     ],
     todos: [],
+    routines: [],
     quotes: [
       { id: uid(), text: QUOTE_DEFAULTS[0].text, author: QUOTE_DEFAULTS[0].author, collapsed: false, pinned: false },
     ],
@@ -280,6 +282,7 @@ function mergeState(stored) {
     notes: Array.isArray(s.notes) ? s.notes.filter((n) => n && typeof n === 'object') : [],
     clocks: Array.isArray(s.clocks) ? s.clocks.filter((c) => c && typeof c === 'object') : [],
     todos: Array.isArray(s.todos) ? s.todos.filter((t) => t && typeof t === 'object') : [],
+    routines: Array.isArray(s.routines) ? s.routines.filter((r) => r && typeof r === 'object') : [],
     quotes: Array.isArray(s.quotes) ? s.quotes.filter((q) => q && typeof q === 'object') : base.quotes,
     videos: Array.isArray(s.videos) ? s.videos.filter((v) => v && typeof v === 'object') : [],
     music: {
@@ -315,7 +318,7 @@ function isUserInteracting() {
   if (els.widgets.querySelector('.dragging')) return true;
   const a = document.activeElement;
   if (!a || !a.closest) return false;
-  return !!a.closest('.note, .todo, .quote, .clock, .video') &&
+  return !!a.closest('.note, .todo, .quote, .clock, .routine, .video') &&
     (a.isContentEditable || a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT');
 }
 
@@ -763,6 +766,191 @@ function addTodo() {
   state.todos.push(todo);
   saveState();
   renderTodos();
+}
+
+/* ---------------- Routine widgets ---------------- */
+
+function renderRoutines() {
+  els.widgets.querySelectorAll('.routine').forEach((r) => r.remove());
+  for (const routine of state.routines) renderRoutine(routine);
+  const changed = layoutRow(state.routines, (id) => els.widgets.querySelector('.routine[data-routine-id="' + id + '"]'), 0.7);
+  if (changed) saveState();
+}
+
+function renderRoutine(routine) {
+  const el = document.createElement('div');
+  el.className = 'routine' + (routine.collapsed ? ' collapsed' : '') + (routine.h || routine.hpct ? ' fixed' : '');
+  el.dataset.routineId = routine.id;
+  el.style.left = clampPct(routine.x) + '%';
+  el.style.top = clampPct(routine.y) + '%';
+  if (routine.wpct != null) el.style.width = routine.wpct + 'vw';
+  else if (routine.w) el.style.width = Math.max(240, routine.w) + 'px';
+  if (routine.hpct != null) el.style.height = routine.hpct + 'vh';
+  else if (routine.h) el.style.height = routine.h + 'px';
+
+  el.innerHTML =
+    '<div class="routine-header">' +
+      '<button type="button" class="icon-btn routine-pin-btn" title="Pin">📌</button>' +
+      '<input class="routine-title" type="text" value="' + escapeHtml(routine.title || '') + '" placeholder="Routine" title="Routine name">' +
+      '<button type="button" class="icon-btn routine-collapse-btn" title="' + (routine.collapsed ? 'Expand' : 'Collapse') + '">' + (routine.collapsed ? '＋' : '–') + '</button>' +
+      '<button type="button" class="icon-btn routine-delete-btn" title="Delete routine">✕</button>' +
+    '</div>' +
+    '<div class="routine-body">' +
+      '<div class="routine-head">' +
+        '<span class="routine-col routine-col-time">Time</span>' +
+        '<span class="routine-col routine-col-task">Task</span>' +
+        '<span class="routine-col routine-col-remarks">Remarks</span>' +
+      '</div>' +
+      '<div class="routine-rows"></div>' +
+      '<form class="routine-add">' +
+        '<input class="routine-time-input" type="text" placeholder="Time" autocomplete="off">' +
+        '<input class="routine-task-input" type="text" placeholder="Task" autocomplete="off">' +
+        '<input class="routine-remarks-input" type="text" placeholder="Remarks" autocomplete="off">' +
+        '<button type="submit" class="routine-submit" title="Add row">＋</button>' +
+      '</form>' +
+    '</div>' +
+    '<div class="routine-resize" title="Drag to resize — double-click to reset"></div>';
+
+  const rowsEl = el.querySelector('.routine-rows');
+  const renderRows = () => {
+    rowsEl.innerHTML = '';
+    for (const row of routine.rows || []) renderRoutineRow(rowsEl, row, routine, renderRows);
+  };
+  renderRows();
+
+  el.querySelector('.routine-title').addEventListener('input', (e) => {
+    routine.title = e.target.value;
+    saveState();
+  });
+
+  const collapseBtn = el.querySelector('.routine-collapse-btn');
+  collapseBtn.addEventListener('click', () => {
+    routine.collapsed = !routine.collapsed;
+    el.classList.toggle('collapsed', routine.collapsed);
+    collapseBtn.textContent = routine.collapsed ? '＋' : '–';
+    collapseBtn.title = routine.collapsed ? 'Expand' : 'Collapse';
+    saveState();
+  });
+
+  bindPin(el, el.querySelector('.routine-pin-btn'), routine);
+
+  el.querySelector('.routine-delete-btn').addEventListener('click', () => {
+    state.routines = state.routines.filter((r) => r.id !== routine.id);
+    el.remove();
+    saveState(true);
+  });
+
+  const resizeHandle = el.querySelector('.routine-resize');
+  makeResizable(el, resizeHandle, (w, h) => {
+    routine.w = Math.round(w);
+    routine.h = Math.round(h);
+    routine.wpct = round3((w / window.innerWidth) * 100);
+    routine.hpct = round3((h / window.innerHeight) * 100);
+    el.classList.add('fixed');
+    saveState();
+  }, {
+    minW: Math.max(240, Math.round(window.innerWidth * 0.16)),
+    minH: Math.max(120, Math.round(window.innerHeight * 0.18)),
+    disabled: () => routine.pinned,
+  });
+  resizeHandle.addEventListener('dblclick', () => {
+    delete routine.w;
+    delete routine.h;
+    delete routine.wpct;
+    delete routine.hpct;
+    el.style.width = '';
+    el.style.height = '';
+    el.classList.remove('fixed');
+    saveState();
+  });
+
+  el.querySelector('.routine-add').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const time = el.querySelector('.routine-time-input');
+    const task = el.querySelector('.routine-task-input');
+    const remarks = el.querySelector('.routine-remarks-input');
+    const taskVal = task.value.trim();
+    const timeVal = time.value.trim();
+    const remarksVal = remarks.value.trim();
+    if (!timeVal && !taskVal && !remarksVal) return;
+    if (!routine.rows) routine.rows = [];
+    routine.rows.push({ id: uid(), time: timeVal, task: taskVal, remarks: remarksVal });
+    time.value = '';
+    task.value = '';
+    remarks.value = '';
+    renderRows();
+    saveState();
+  });
+
+  makeDraggable(el, el, () => {
+    routine.x = pct(el.style.left);
+    routine.y = pct(el.style.top);
+    saveState();
+  }, { disabled: () => routine.pinned });
+
+  els.widgets.appendChild(el);
+}
+
+function renderRoutineRow(rowsEl, row, routine, rerender) {
+  const li = document.createElement('div');
+  li.className = 'routine-row';
+  li.innerHTML =
+    '<button type="button" class="icon-btn routine-move-btn" data-dir="-1" title="Move up">↑</button>' +
+    '<button type="button" class="icon-btn routine-move-btn" data-dir="1" title="Move down">↓</button>' +
+    '<span class="routine-col routine-col-time" contenteditable="true" spellcheck="false">' + escapeHtml(row.time) + '</span>' +
+    '<span class="routine-col routine-col-task" contenteditable="true" spellcheck="false">' + escapeHtml(row.task) + '</span>' +
+    '<span class="routine-col routine-col-remarks" contenteditable="true" spellcheck="false">' + escapeHtml(row.remarks) + '</span>' +
+    '<button type="button" class="icon-btn routine-row-del" title="Delete row">✕</button>';
+
+  const bindCell = (cell, key) => {
+    cell.addEventListener('blur', () => {
+      row[key] = cell.textContent.trim();
+      if (!row.time && !row.task && !row.remarks) {
+        routine.rows = (routine.rows || []).filter((r) => r.id !== row.id);
+        if (rerender) rerender();
+      }
+      saveState();
+    });
+    cell.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        cell.blur();
+      }
+    });
+  };
+  bindCell(li.querySelector('.routine-col-time'), 'time');
+  bindCell(li.querySelector('.routine-col-task'), 'task');
+  bindCell(li.querySelector('.routine-col-remarks'), 'remarks');
+
+  li.querySelectorAll('.routine-move-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const dir = Number(btn.dataset.dir);
+      const list = routine.rows || [];
+      const idx = list.findIndex((r) => r.id === row.id);
+      const swap = idx + dir;
+      if (idx === -1 || swap < 0 || swap >= list.length) return;
+      const tmp = list[idx];
+      list[idx] = list[swap];
+      list[swap] = tmp;
+      if (rerender) rerender();
+      saveState();
+    });
+  });
+
+  li.querySelector('.routine-row-del').addEventListener('click', () => {
+    routine.rows = (routine.rows || []).filter((r) => r.id !== row.id);
+    li.remove();
+    saveState(true);
+  });
+
+  rowsEl.appendChild(li);
+}
+
+function addRoutine() {
+  const routine = { id: uid(), title: '', rows: [], collapsed: false, pinned: false };
+  state.routines.push(routine);
+  saveState();
+  renderRoutines();
 }
 
 /* ---------------- Video players ---------------- */
@@ -1799,6 +1987,7 @@ const LAYOUT_KINDS = {
   clock: { selector: '.clock', idAttr: 'clockId', minW: 150 },
   todo:  { selector: '.todo',  idAttr: 'todoId',  minW: 200 },
   quote: { selector: '.quote', idAttr: 'quoteId', minW: 240 },
+  routine: { selector: '.routine', idAttr: 'routineId', minW: 240 },
   video: { selector: '.video', idAttr: 'videoId', minW: 240 },
 };
 
@@ -2033,6 +2222,7 @@ function bindUi() {
   els.addNoteBtn.addEventListener('click', addNote);
   els.addClockBtn.addEventListener('click', addClock);
   els.addTodoBtn.addEventListener('click', addTodo);
+  els.addRoutineBtn.addEventListener('click', addRoutine);
   els.addQuoteBtn.addEventListener('click', addQuote);
   els.cycleWallpaperBtn.addEventListener('click', nextWallpaper);
   els.settingsBtn.addEventListener('click', () => els.settingsOverlay.classList.add('open'));
@@ -2091,7 +2281,7 @@ function bindUi() {
   window.addEventListener('focus', flushPendingExternal);
   document.addEventListener('focusout', (e) => {
     const next = e.relatedTarget;
-    if (next && next.closest && next.closest('.note, .todo, .quote, .clock')) return;
+    if (next && next.closest && next.closest('.note, .todo, .quote, .clock, .routine')) return;
     flushPendingExternal();
   });
   document.addEventListener('pointerup', flushPendingExternal);
@@ -2143,6 +2333,7 @@ function renderEverything() {
   renderNotes();
   renderClocks();
   renderTodos();
+  renderRoutines();
   renderQuotes();
   renderMusic();
   syncSettingsUI();
@@ -2162,6 +2353,7 @@ function collectionPrints(st) {
     notes: JSON.stringify(st.notes),
     clocks: JSON.stringify(st.clocks),
     todos: JSON.stringify(st.todos),
+    routines: JSON.stringify(st.routines),
     quotes: JSON.stringify(st.quotes),
     music: JSON.stringify(st.music),
   };
@@ -2180,6 +2372,7 @@ function renderChangedCollections() {
   if (prev.notes !== next.notes) renderNotes();
   if (prev.clocks !== next.clocks) renderClocks();
   if (prev.todos !== next.todos) renderTodos();
+  if (prev.routines !== next.routines) renderRoutines();
   if (prev.quotes !== next.quotes) renderQuotes();
   if (prev.music !== next.music) renderMusic();
   syncSettingsUI();
