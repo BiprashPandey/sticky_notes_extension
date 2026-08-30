@@ -1,7 +1,6 @@
 'use strict';
 
 const STORAGE_KEY = 'dashboardStateV1';
-const LAYOUT_KEY = 'dashboardLayoutV1';
 
 const FONTS = {
   default: { label: 'JetBrains Mono', stack: "'JetBrains Mono', 'Cascadia Code', 'Courier New', monospace" },
@@ -118,12 +117,9 @@ const TZ_PRESETS = [
 let state = null;
 let WALLPAPERS = [];
 let cycleTimer = null;
-let saveTimer = null;
 let layoutResizeTimer = null;
 let allTz = null;
 let appliedWpId = null;
-let pendingExternal = null;
-let externalApplyTimer = null;
 const clockFormatters = new Map();
 const clockEls = new Map();
 
@@ -161,7 +157,6 @@ const els = {
   settingsBtn: document.getElementById('settingsBtn'),
   settingsOverlay: document.getElementById('settingsOverlay'),
   closeSettingsBtn: document.getElementById('closeSettingsBtn'),
-  saveLayoutBtn: document.getElementById('saveLayoutBtn'),
   fontInput: document.getElementById('fontInput'),
   cycleInput: document.getElementById('cycleInput'),
   wpGallery: document.getElementById('wpGallery'),
@@ -231,6 +226,7 @@ function freshState() {
       cycleMinutes: 0,
     },
     wallpaper: { id: 'g7' },
+    layout: null,
     notes: [
       {
         id: uid(),
@@ -266,6 +262,7 @@ function mergeState(stored) {
       font: (s.settings && (s.settings.font || s.settings.defaultNoteFont)) || base.settings.font,
     }),
     wallpaper: Object.assign({}, base.wallpaper, s.wallpaper || {}),
+    layout: s.layout && typeof s.layout === 'object' ? s.layout : null,
     notes: Array.isArray(s.notes) ? s.notes.filter((n) => n && typeof n === 'object') : [],
     clocks: Array.isArray(s.clocks) ? s.clocks.filter((c) => c && typeof c === 'object') : [],
     todos: Array.isArray(s.todos) ? s.todos.filter((t) => t && typeof t === 'object') : [],
@@ -281,80 +278,19 @@ function mergeState(stored) {
 }
 
 function persistState() {
-  if (pendingExternal) flushPendingExternal();
   chrome.storage.local.set({ [STORAGE_KEY]: JSON.parse(JSON.stringify(state)) });
 }
 
-function saveState(immediate) {
+function saveState() {
+  // Edits only live in-memory until the user clicks Save. Nothing is written to
+  // storage here; the token just records that something changed locally.
   state.saveToken = (state.saveToken || 0) + 1;
-  if (saveTimer) clearTimeout(saveTimer);
-  if (immediate) persistState();
-  else saveTimer = setTimeout(persistState, 250);
 }
 
-function flushPendingSave() {
-  if (!saveTimer) return;
-  clearTimeout(saveTimer);
-  saveTimer = null;
-  persistState();
-}
-
-function stateFingerprint(st) {
-  const copy = Object.assign({}, st || {});
-  delete copy.saveToken;
-  return JSON.stringify(copy);
-}
-
-const WIDGET_FOCUS_MAP = [
-  ['.note', 'notes'],
-  ['.todo', 'todos'],
-  ['.quote', 'quotes'],
-  ['.clock', 'clocks'],
-  ['.routine', 'routines'],
-];
-
-function focusedCollectionKey() {
-  const a = document.activeElement;
-  if (!a || !a.closest) return null;
-  for (const [sel, key] of WIDGET_FOCUS_MAP) {
-    if (a.closest(sel)) return key;
-  }
-  return null;
-}
-
-function applyExternalSmart(v) {
-  const merged = mergeState(v);
-  const focus = focusedCollectionKey();
-  if (focus && Array.isArray(merged[focus])) merged[focus] = state[focus];
-  state = merged;
-  renderChangedCollections(focus ? [focus] : null);
-}
-
-function flushPendingExternal() {
-  if (externalApplyTimer) {
-    clearTimeout(externalApplyTimer);
-    externalApplyTimer = null;
-  }
-  if (!pendingExternal) return;
-  const v = pendingExternal;
-  pendingExternal = null;
-  if ((Number(v && v.saveToken) || 0) < state.saveToken) return;
-  if (stateFingerprint(state) === stateFingerprint(v)) {
-    state.saveToken = Math.max(state.saveToken, Number(v.saveToken) || 0);
-    return;
-  }
-  if (document.visibilityState === 'hidden' || els.widgets.querySelector('.dragging')) {
-    pendingExternal = v;
-    externalApplyTimer = setTimeout(() => flushPendingExternal(), 400);
-    return;
-  }
-  applyExternalSmart(v);
-}
-
-function queueExternalApply(newValue) {
-  pendingExternal = newValue;
-  if (externalApplyTimer) clearTimeout(externalApplyTimer);
-  externalApplyTimer = setTimeout(flushPendingExternal, 120);
+function applyExternal(newValue) {
+  state = mergeState(newValue);
+  applySavedLayout();
+  renderEverything();
 }
 
 /* ---------------- Wallpapers ---------------- */
@@ -2073,7 +2009,7 @@ function captureLayout() {
     viewport: { w: vw, h: vh },
     widgets: widgets,
   };
-  localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+  state.layout = layout;
   return layout;
 }
 
@@ -2098,25 +2034,10 @@ function applyLayout(layout) {
 }
 
 function applySavedLayout() {
-  let raw = null;
-  try {
-    raw = localStorage.getItem(LAYOUT_KEY);
-  } catch (e) {
-    return false;
-  }
-  if (!raw) return false;
-  let layout = null;
-  try {
-    layout = JSON.parse(raw);
-  } catch (e) {
-    return false;
-  }
+  const layout = state.layout;
   if (!layout || layout.version !== 1 || !Array.isArray(layout.widgets)) return false;
-  const before = stateFingerprint(state);
   applyLayout(layout);
-  const changed = stateFingerprint(state) !== before;
-  if (changed) saveState();
-  return changed;
+  return true;
 }
 
 function refreshLayout() {
@@ -2191,18 +2112,6 @@ function bindSettings() {
     e.target.value = '';
   });
   els.resetBtn.addEventListener('click', resetData);
-
-  els.saveLayoutBtn.addEventListener('click', () => {
-    captureLayout();
-    const btn = els.saveLayoutBtn;
-    const label = btn.textContent;
-    btn.textContent = 'Saved ✓';
-    btn.disabled = true;
-    setTimeout(() => {
-      btn.textContent = label;
-      btn.disabled = false;
-    }, 1200);
-  });
 }
 
 function syncSettingsUI() {
@@ -2245,19 +2154,6 @@ function bindUi() {
     if (layoutResizeTimer) clearTimeout(layoutResizeTimer);
     layoutResizeTimer = setTimeout(refreshLayout, 250);
   });
-
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flushPendingSave();
-    else flushPendingExternal();
-  });
-  window.addEventListener('pagehide', flushPendingSave);
-  window.addEventListener('focus', flushPendingExternal);
-  document.addEventListener('focusout', (e) => {
-    const next = e.relatedTarget;
-    if (next && next.closest && next.closest('.note, .todo, .quote, .clock, .routine')) return;
-    flushPendingExternal();
-  });
-  document.addEventListener('pointerup', flushPendingExternal);
 }
 
 /* ---------------- Data ---------------- */
@@ -2276,8 +2172,9 @@ function importData(file) {
   reader.onload = () => {
     try {
       state = mergeState(JSON.parse(reader.result));
-      saveState(true);
       renderEverything();
+      applySavedLayout();
+      persistState();
     } catch (err) {
       alert('Import failed: ' + err.message);
     }
@@ -2287,14 +2184,9 @@ function importData(file) {
 
 function resetData() {
   if (!confirm('Reset the dashboard to defaults? All notes and clocks will be removed.')) return;
-  try {
-    localStorage.removeItem(LAYOUT_KEY);
-  } catch (e) {
-    /* ignore */
-  }
   state = freshState();
-  saveState(true);
   renderEverything();
+  persistState();
 }
 
 let saveFlashTimer = null;
@@ -2308,8 +2200,9 @@ function manualSave() {
       /* ignore */
     }
   }
-  flushPendingSave();
-  saveState(true);
+  captureLayout();
+  state.saveToken = (state.saveToken || 0) + 1;
+  persistState();
   els.saveBtn.classList.add('saved');
   els.saveBtn.textContent = '✓';
   if (saveFlashTimer) clearTimeout(saveFlashTimer);
@@ -2399,12 +2292,11 @@ function renderChangedCollections(skip) {
     if (area !== 'local') return;
     const ch = changes[STORAGE_KEY];
     if (!ch || !ch.newValue) return;
-    queueExternalApply(ch.newValue);
+    applyExternal(ch.newValue);
   });
 
   applySavedLayout();
   renderEverything();
   setInterval(updateAllClocks, 1000);
-  setInterval(flushPendingSave, 800);
   document.body.classList.add('ready');
 })();
