@@ -1071,32 +1071,48 @@ body.ready {
   color: var(--text-dim);
 }
 
-.routine-move-btn {
+.routine-col-check {
+  flex: 0 0 clamp(16px, 1.5vw, 24px);
+  text-align: center;
+}
+
+.routine-check-btn {
   flex: none;
-  width: clamp(14px, 1.2vw, 20px);
-  height: clamp(14px, 1.2vw, 20px);
-  border-radius: 5px;
+  width: clamp(16px, 1.5vw, 24px);
+  height: clamp(16px, 1.5vw, 24px);
+  border-radius: 50%;
   border: 1.5px solid rgba(255, 255, 255, 0.4);
   background: transparent;
   color: var(--text-dim);
-  font-size: clamp(10px, 0.7vw, 13px);
+  font-size: clamp(11px, 0.75vw, 14px);
   line-height: 1;
   padding: 0;
   display: grid;
   place-items: center;
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.6;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
-.routine-row:hover .routine-move-btn {
-  opacity: 0.72;
-}
-
-.routine-move-btn:hover {
+.routine-check-btn:hover {
   opacity: 1;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.routine-row.done .routine-check-btn {
+  opacity: 1;
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+
+.routine-row.done .routine-col {
+  opacity: 0.6;
+}
+
+.routine-row.done .routine-col-task {
+  text-decoration: line-through;
 }
 
 .routine-row-del {

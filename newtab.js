@@ -770,6 +770,50 @@ function addTodo() {
 
 /* ---------------- Routine widgets ---------------- */
 
+function parseRoutineTime(str) {
+  const s = String(str || '').trim().toLowerCase();
+  if (!s) return null;
+  let m = s.match(/^(\d{1,2})(?::(\d{2}))?$/);
+  if (m) {
+    const h = parseInt(m[1], 10);
+    const min = m[2] ? parseInt(m[2], 10) : 0;
+    if (h > 23 || min > 59) return null;
+    return { minutes: h * 60 + min };
+  }
+  m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*([ap])\.?\s*m\.?$/);
+  if (m) {
+    let h = parseInt(m[1], 10);
+    const min = m[2] ? parseInt(m[2], 10) : 0;
+    if (h < 1 || h > 12 || min > 59) return null;
+    if (m[3] === 'p' && h !== 12) h += 12;
+    if (m[3] === 'a' && h === 12) h = 0;
+    return { minutes: h * 60 + min };
+  }
+  return null;
+}
+
+function normalizeRoutineTime(str) {
+  const p = parseRoutineTime(str);
+  if (!p) return String(str || '').trim();
+  const h = Math.floor(p.minutes / 60);
+  const min = p.minutes % 60;
+  let hr12 = h % 12;
+  if (hr12 === 0) hr12 = 12;
+  return hr12 + ':' + (min < 10 ? '0' : '') + min + ' ' + (h < 12 ? 'am' : 'pm');
+}
+
+function routineTimeMinutes(str) {
+  const p = parseRoutineTime(str);
+  return p == null ? Infinity : p.minutes;
+}
+
+function compareRoutineRows(a, b) {
+  const da = routineTimeMinutes(a.time);
+  const db = routineTimeMinutes(b.time);
+  if (da !== db) return da - db;
+  return String(a.task || '').localeCompare(String(b.task || ''));
+}
+
 function renderRoutines() {
   els.widgets.querySelectorAll('.routine').forEach((r) => r.remove());
   for (const routine of state.routines) renderRoutine(routine);
@@ -797,13 +841,14 @@ function renderRoutine(routine) {
     '</div>' +
     '<div class="routine-body">' +
       '<div class="routine-head">' +
+        '<span class="routine-col routine-col-check">✓</span>' +
         '<span class="routine-col routine-col-time">Time</span>' +
         '<span class="routine-col routine-col-task">Task</span>' +
         '<span class="routine-col routine-col-remarks">Remarks</span>' +
       '</div>' +
       '<div class="routine-rows"></div>' +
       '<form class="routine-add">' +
-        '<input class="routine-time-input" type="text" placeholder="Time" autocomplete="off">' +
+        '<input class="routine-time-input" type="text" placeholder="10:15 am" autocomplete="off">' +
         '<input class="routine-task-input" type="text" placeholder="Task" autocomplete="off">' +
         '<input class="routine-remarks-input" type="text" placeholder="Remarks" autocomplete="off">' +
         '<button type="submit" class="routine-submit" title="Add row">＋</button>' +
@@ -813,6 +858,7 @@ function renderRoutine(routine) {
 
   const rowsEl = el.querySelector('.routine-rows');
   const renderRows = () => {
+    (routine.rows || []).sort(compareRoutineRows);
     rowsEl.innerHTML = '';
     for (const row of routine.rows || []) renderRoutineRow(rowsEl, row, routine, renderRows);
   };
@@ -874,7 +920,7 @@ function renderRoutine(routine) {
     const remarksVal = remarks.value.trim();
     if (!timeVal && !taskVal && !remarksVal) return;
     if (!routine.rows) routine.rows = [];
-    routine.rows.push({ id: uid(), time: timeVal, task: taskVal, remarks: remarksVal });
+    routine.rows.push({ id: uid(), time: normalizeRoutineTime(timeVal), task: taskVal, remarks: remarksVal, done: false });
     time.value = '';
     task.value = '';
     remarks.value = '';
@@ -893,10 +939,9 @@ function renderRoutine(routine) {
 
 function renderRoutineRow(rowsEl, row, routine, rerender) {
   const li = document.createElement('div');
-  li.className = 'routine-row';
+  li.className = 'routine-row' + (row.done ? ' done' : '');
   li.innerHTML =
-    '<button type="button" class="icon-btn routine-move-btn" data-dir="-1" title="Move up">↑</button>' +
-    '<button type="button" class="icon-btn routine-move-btn" data-dir="1" title="Move down">↓</button>' +
+    '<button type="button" class="icon-btn routine-check-btn" title="' + (row.done ? 'Mark not done' : 'Mark as done') + '">' + (row.done ? '✓' : '○') + '</button>' +
     '<span class="routine-col routine-col-time" contenteditable="true" spellcheck="false">' + escapeHtml(row.time) + '</span>' +
     '<span class="routine-col routine-col-task" contenteditable="true" spellcheck="false">' + escapeHtml(row.task) + '</span>' +
     '<span class="routine-col routine-col-remarks" contenteditable="true" spellcheck="false">' + escapeHtml(row.remarks) + '</span>' +
@@ -904,7 +949,9 @@ function renderRoutineRow(rowsEl, row, routine, rerender) {
 
   const bindCell = (cell, key) => {
     cell.addEventListener('blur', () => {
-      row[key] = cell.textContent.trim();
+      let val = cell.textContent.trim();
+      if (key === 'time') val = normalizeRoutineTime(val);
+      row[key] = val;
       if (!row.time && !row.task && !row.remarks) {
         routine.rows = (routine.rows || []).filter((r) => r.id !== row.id);
         if (rerender) rerender();
@@ -922,19 +969,13 @@ function renderRoutineRow(rowsEl, row, routine, rerender) {
   bindCell(li.querySelector('.routine-col-task'), 'task');
   bindCell(li.querySelector('.routine-col-remarks'), 'remarks');
 
-  li.querySelectorAll('.routine-move-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const dir = Number(btn.dataset.dir);
-      const list = routine.rows || [];
-      const idx = list.findIndex((r) => r.id === row.id);
-      const swap = idx + dir;
-      if (idx === -1 || swap < 0 || swap >= list.length) return;
-      const tmp = list[idx];
-      list[idx] = list[swap];
-      list[swap] = tmp;
-      if (rerender) rerender();
-      saveState();
-    });
+  li.querySelector('.routine-check-btn').addEventListener('click', () => {
+    row.done = !row.done;
+    li.classList.toggle('done', row.done);
+    const b = li.querySelector('.routine-check-btn');
+    b.textContent = row.done ? '✓' : '○';
+    b.title = row.done ? 'Mark not done' : 'Mark as done';
+    saveState();
   });
 
   li.querySelector('.routine-row-del').addEventListener('click', () => {
