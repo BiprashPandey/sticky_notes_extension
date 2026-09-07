@@ -2127,6 +2127,7 @@ function bindUi() {
   els.addQuoteBtn.addEventListener('click', addQuote);
   els.cycleWallpaperBtn.addEventListener('click', nextWallpaper);
   els.saveBtn.addEventListener('click', manualSave);
+  document.addEventListener('contextmenu', manualSave);
   els.settingsBtn.addEventListener('click', () => els.settingsOverlay.classList.add('open'));
   els.closeSettingsBtn.addEventListener('click', () => els.settingsOverlay.classList.remove('open'));
   els.settingsOverlay.addEventListener('click', (e) => {
