@@ -159,6 +159,10 @@ const els = {
   closeSettingsBtn: document.getElementById('closeSettingsBtn'),
   fontInput: document.getElementById('fontInput'),
   cycleInput: document.getElementById('cycleInput'),
+  focusSitesInput: document.getElementById('focusSitesInput'),
+  focusMinutesInput: document.getElementById('focusMinutesInput'),
+  focusEnabledInput: document.getElementById('focusEnabledInput'),
+  focusEnabledLabel: document.getElementById('focusEnabledLabel'),
   wpGallery: document.getElementById('wpGallery'),
   exportBtn: document.getElementById('exportBtn'),
   importBtn: document.getElementById('importBtn'),
@@ -250,6 +254,7 @@ function freshState() {
     ],
     videos: [],
     music: { playlists: [] },
+    focus: { enabled: true, sites: [], minutes: 5 },
   };
 }
 
@@ -274,7 +279,19 @@ function mergeState(stored) {
         ? s.music.playlists.filter((p) => p && typeof p === 'object')
         : [],
     },
+    focus: {
+      enabled: s.focus ? s.focus.enabled !== false : true,
+      sites: Array.isArray(s.focus && s.focus.sites)
+        ? s.focus.sites.filter((x) => typeof x === 'string' && x.trim())
+        : (s.focus && s.focus.url ? [s.focus.url] : []),
+      minutes: clampMinutes(s.focus && s.focus.minutes),
+    },
   };
+}
+
+function clampMinutes(m) {
+  const n = Number(m);
+  return isFinite(n) && n >= 1 ? Math.min(180, Math.round(n)) : 5;
 }
 
 function persistState() {
@@ -2105,6 +2122,26 @@ function bindSettings() {
     restartCycleTimer();
   });
 
+  els.focusSitesInput.addEventListener('change', (e) => {
+    const sites = e.target.value
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    state.focus.sites = sites;
+    manualSave();
+  });
+
+  els.focusMinutesInput.addEventListener('change', (e) => {
+    state.focus.minutes = clampMinutes(e.target.value);
+    manualSave();
+  });
+
+  els.focusEnabledInput.addEventListener('change', (e) => {
+    state.focus.enabled = e.target.checked;
+    updateFocusToggleUi(e.target.checked);
+    manualSave();
+  });
+
   els.exportBtn.addEventListener('click', exportData);
   els.importBtn.addEventListener('click', () => els.importFile.click());
   els.importFile.addEventListener('change', (e) => {
@@ -2117,6 +2154,19 @@ function bindSettings() {
 function syncSettingsUI() {
   els.fontInput.value = state.settings.font || 'default';
   els.cycleInput.value = String(state.settings.cycleMinutes || 0);
+  els.focusSitesInput.value = (state.focus && Array.isArray(state.focus.sites) ? state.focus.sites : []).join('\n');
+  els.focusMinutesInput.value = String(clampMinutes(state.focus && state.focus.minutes));
+  const focusEnabled = state.focus ? state.focus.enabled !== false : true;
+  els.focusEnabledInput.checked = focusEnabled;
+  updateFocusToggleUi(focusEnabled);
+}
+
+function updateFocusToggleUi(on) {
+  els.focusEnabledLabel.textContent = on ? 'On' : 'Off';
+  els.focusEnabledLabel.classList.toggle('on', on);
+  els.focusEnabledLabel.classList.toggle('off', !on);
+  els.focusSitesInput.disabled = !on;
+  els.focusMinutesInput.disabled = !on;
 }
 
 function bindUi() {
@@ -2299,5 +2349,6 @@ function renderChangedCollections(skip) {
   applySavedLayout();
   renderEverything();
   setInterval(updateAllClocks, 1000);
+  if (new URLSearchParams(location.search).get('reels') === '1') openVideoPlayer();
   document.body.classList.add('ready');
 })();

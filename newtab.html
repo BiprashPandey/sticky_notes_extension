@@ -57,6 +57,30 @@
       </section>
 
       <section class="field-group">
+        <span class="field-label">Focus mode</span>
+        <label class="switch-row">
+          <span class="switch">
+            <input type="checkbox" id="focusEnabledInput">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </span>
+          <span class="switch-label" id="focusEnabledLabel">On</span>
+        </label>
+        <p class="field-hint">Turn focus blocking off entirely. No sites will be locked.</p>
+      </section>
+
+      <section class="field-group">
+        <label class="field-label" for="focusSitesInput">Focus mode sites</label>
+        <textarea class="text-input focus-input" id="focusSitesInput" rows="4" placeholder="facebook.com&#10;tiktok.com&#10;instagram.com" spellcheck="false"></textarea>
+        <p class="field-hint">One site per line. When you open any of these, a blocking Focus mode banner appears so you can limit your time. Each site is locked independently.</p>
+      </section>
+
+      <section class="field-group">
+        <label class="field-label" for="focusMinutesInput">Lock duration (minutes)</label>
+        <input class="text-input" id="focusMinutesInput" type="number" min="1" max="180" value="5">
+        <p class="field-hint">How long a site stays usable after you pick "Use for N mins".</p>
+      </section>
+
+      <section class="field-group">
         <span class="field-label">Wallpaper</span>
         <div class="wp-gallery" id="wpGallery"></div>
       </section>
