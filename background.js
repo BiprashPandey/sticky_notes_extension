@@ -94,7 +94,10 @@ function isMixPlaylist(url) {
     const u = new URL(url);
     const host = normalizeDomain(u.hostname);
     if (host !== 'youtube.com' && !host.endsWith('.youtube.com')) return false;
-    return u.searchParams.has('index');
+    if (u.searchParams.has('index')) return true;
+    if (u.searchParams.get('start_radio') === '1') return true;
+    const list = String(u.searchParams.get('list') || '');
+    return list.slice(0, 2).toUpperCase() === 'RD';
   } catch (e) {
     return false;
   }
@@ -144,8 +147,25 @@ async function siteTabs(site) {
   }
 }
 
+async function allSiteTabs(site) {
+  try {
+    const tabs = await chrome.tabs.query({});
+    return tabs.filter((t) => t.url && matchedSite(hostOf(t.url)) === site);
+  } catch (e) {
+    return [];
+  }
+}
+
 function notifySite(site, type, data) {
   siteTabs(site).then((tabs) => {
+    for (const t of tabs) {
+      chrome.tabs.sendMessage(t.id, Object.assign({ type: type }, data)).catch(() => {});
+    }
+  });
+}
+
+function notifySiteAll(site, type, data) {
+  allSiteTabs(site).then((tabs) => {
     for (const t of tabs) {
       chrome.tabs.sendMessage(t.id, Object.assign({ type: type }, data)).catch(() => {});
     }
@@ -155,21 +175,21 @@ function notifySite(site, type, data) {
 function startBlockade(site) {
   blockades[site] = { endAt: Date.now() + focusMinutes * 60 * 1000, warned: false };
   saveBlockades();
-  notifySite(site, 'FOCUS_ACTIVE', { remainingMs: focusMinutes * 60 * 1000 });
+  notifySite(site, 'FOCUS_ACTIVE', { remainingMs: focusMinutes * 60 * 1000, playMixes: focusPlayMixes });
 }
 
 function clearAllBlockades() {
   const sites = Object.keys(blockades);
   blockades = {};
   saveBlockades();
-  for (const site of sites) notifySite(site, 'FOCUS_HIDE');
-  for (const site of focusSites) notifySite(normalizeDomain(site), 'FOCUS_HIDE');
+  for (const site of sites) notifySiteAll(site, 'FOCUS_HIDE', { playMixes: focusPlayMixes });
+  for (const site of focusSites) notifySiteAll(normalizeDomain(site), 'FOCUS_HIDE', { playMixes: focusPlayMixes });
 }
 
 async function endBlockade(site, closeNow) {
   delete blockades[site];
   saveBlockades();
-  notifySite(site, 'FOCUS_HIDE');
+  notifySiteAll(site, 'FOCUS_HIDE', { playMixes: focusPlayMixes });
   if (closeNow) {
     const tabs = await siteTabs(site);
     for (const t of tabs) {
@@ -209,6 +229,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         warned: b ? b.warned : false,
         remainingMs: b ? Math.max(0, b.endAt - Date.now()) : 0,
         minutes: focusMinutes,
+        playMixes: focusPlayMixes,
       });
     });
     return true;
@@ -244,7 +265,7 @@ async function focusTick() {
       await endBlockade(site, true);
     } else if (rem <= WARN_LEAD_MS && !b.warned) {
       b.warned = true;
-      notifySite(site, 'FOCUS_WARN', { remainingMs: rem, minutes: focusMinutes });
+      notifySite(site, 'FOCUS_WARN', { remainingMs: rem, minutes: focusMinutes, playMixes: focusPlayMixes });
       saveBlockades();
     }
   }

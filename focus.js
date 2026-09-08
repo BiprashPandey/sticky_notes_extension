@@ -5,6 +5,16 @@
   if (document.getElementById('focus-mode-host')) return;
 
   let focusDurationMin = 5;
+  let allowMixes = true;
+
+  function isMixPage() {
+    const host = location.hostname.toLowerCase().replace(/^www\./, '');
+    if (host !== 'youtube.com' && !host.endsWith('.youtube.com')) return false;
+    const q = location.search || '';
+    if (q.indexOf('index=') !== -1) return true;
+    if (q.indexOf('start_radio=1') !== -1) return true;
+    return /[?&]list=RD/i.test(q);
+  }
 
   const HOST_ID = 'focus-mode-host';
   const host = document.createElement('div');
@@ -152,6 +162,7 @@
   function applyInit(res) {
     if (!res || !res.isTarget) return;
     if (res.minutes) focusDurationMin = res.minutes;
+    if (typeof res.playMixes === 'boolean') allowMixes = res.playMixes;
     if (!res.active) showInitial();
   }
 
@@ -163,8 +174,23 @@
 
   chrome.runtime.onMessage.addListener((msg) => {
     if (!msg || !msg.type) return;
-    if (msg.type === 'FOCUS_ACTIVE') hide();
-    else if (msg.type === 'FOCUS_WARN') showWarn(msg);
-    else if (msg.type === 'FOCUS_HIDE') hide();
+    if (typeof msg.playMixes === 'boolean') allowMixes = msg.playMixes;
+    if (msg.type === 'FOCUS_ACTIVE') {
+      if (allowMixes && isMixPage()) { hide(); return; }
+      hide();
+    } else if (msg.type === 'FOCUS_WARN') {
+      if (allowMixes && isMixPage()) { hide(); return; }
+      showWarn(msg);
+    } else if (msg.type === 'FOCUS_HIDE') {
+      hide();
+    }
   });
+
+  let lastHref = location.href;
+  setInterval(() => {
+    if (location.href !== lastHref) {
+      lastHref = location.href;
+      if (allowMixes && isMixPage()) hide();
+    }
+  }, 800);
 })();
