@@ -135,6 +135,7 @@ const els = {
   cycleWallpaperBtn: document.getElementById('cycleWallpaperBtn'),
   pomodoroBtn: document.getElementById('pomodoroBtn'),
   focusBtn: document.getElementById('focusBtn'),
+  focusLed: document.getElementById('focusBtn').querySelector('.focus-led'),
   focusOverlay: document.getElementById('focusOverlay'),
   closeFocusBtn: document.getElementById('closeFocusBtn'),
   focusPlayMixesInput: document.getElementById('focusPlayMixesInput'),
@@ -2189,6 +2190,7 @@ function updateFocusToggleUi(on) {
   els.focusSitesInput.disabled = !on;
   els.focusMinutesInput.disabled = !on;
   els.focusPlayMixesInput.disabled = !on;
+  els.focusLed.classList.toggle('on', on);
 }
 
 function bindUi() {

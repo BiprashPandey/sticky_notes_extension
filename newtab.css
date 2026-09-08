@@ -153,6 +153,28 @@ body.power-hidden .music-mini {
   line-height: 1;
 }
 
+.focus-led {
+  flex: none;
+  width: clamp(8px, 0.8vw, 11px);
+  height: clamp(8px, 0.8vw, 11px);
+  border-radius: 50%;
+  background: #f87171;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.8);
+  animation: ledBlink 1.2s ease-in-out infinite;
+}
+
+.focus-led.on {
+  background: #4ade80;
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.9);
+}
+
+@keyframes ledBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
 .power-btn {
   position: fixed;
   top: clamp(10px, 1.3vh, 18px);
