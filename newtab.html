@@ -13,11 +13,6 @@
 
   <header class="topbar">
     <div class="tool-group">
-      <button type="button" class="tool-btn" id="addNoteBtn" title="Add a sticky note"><span class="tool-ico">＋</span><span class="tl">Note</span></button>
-      <button type="button" class="tool-btn" id="addClockBtn" title="Add a world clock"><span class="tool-ico">＋</span><span class="tl">Clock</span></button>
-      <button type="button" class="tool-btn" id="addTodoBtn" title="Add a to-do list"><span class="tool-ico">＋</span><span class="tl">To Dos</span></button>
-      <button type="button" class="tool-btn" id="addRoutineBtn" title="Add a routine"><span class="tool-ico">＋</span><span class="tl">Routine</span></button>
-      <button type="button" class="tool-btn" id="addQuoteBtn" title="Add a quote"><span class="tool-ico">＋</span><span class="tl">Quote</span></button>
       <button type="button" class="tool-btn" id="addVideoBtn" title="Open reel player"><span class="tool-ico">▶</span><span class="tl">Reels</span></button>
       <button type="button" class="tool-btn" id="musicBtn" title="Music playlists"><span class="tool-ico">♪</span><span class="tl">Music</span></button>
     </div>
@@ -25,11 +20,13 @@
     <div class="tool-group">
       <button type="button" class="tool-btn" id="cycleWallpaperBtn" title="Next wallpaper">🎨</button>
       <button type="button" class="tool-btn" id="pomodoroBtn" title="Pomodoro timer">🍅</button>
-      <button type="button" class="tool-btn" id="focusBtn" title="Focus mode settings"><span class="tool-ico">◎</span><span class="tl">Focus</span></button>
+      <button type="button" class="tool-btn" id="focusBtn" title="Focus mode settings"><span class="tool-ico">◎</span></button>
       <button type="button" class="tool-btn" id="saveBtn" title="Save all changes">💾</button>
       <button type="button" class="tool-btn" id="settingsBtn" title="Dashboard settings">⚙</button>
     </div>
   </header>
+
+  <button type="button" class="power-btn" id="powerBtn" title="Hide all widgets">⏻</button>
 
   <div class="widgets" id="widgets"></div>
 
@@ -39,6 +36,21 @@
         <h2>Dashboard settings</h2>
         <button type="button" class="icon-btn" id="closeSettingsBtn" title="Close">✕</button>
       </div>
+
+      <section class="field-group">
+        <span class="field-label">Add widgets</span>
+        <div class="btn-row add-widgets">
+          <button type="button" class="ghost-btn" id="addNoteBtn">＋ Note</button>
+          <button type="button" class="ghost-btn" id="addClockBtn">＋ Clock</button>
+        </div>
+        <div class="btn-row add-widgets">
+          <button type="button" class="ghost-btn" id="addTodoBtn">＋ To Dos</button>
+          <button type="button" class="ghost-btn" id="addRoutineBtn">＋ Routine</button>
+        </div>
+        <div class="btn-row add-widgets">
+          <button type="button" class="ghost-btn" id="addQuoteBtn">＋ Quote</button>
+        </div>
+      </section>
 
       <section class="field-group">
         <label class="field-label" for="fontInput">Interface font</label>
