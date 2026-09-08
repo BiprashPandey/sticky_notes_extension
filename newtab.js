@@ -134,6 +134,11 @@ const els = {
   addVideoBtn: document.getElementById('addVideoBtn'),
   cycleWallpaperBtn: document.getElementById('cycleWallpaperBtn'),
   pomodoroBtn: document.getElementById('pomodoroBtn'),
+  focusBtn: document.getElementById('focusBtn'),
+  focusOverlay: document.getElementById('focusOverlay'),
+  closeFocusBtn: document.getElementById('closeFocusBtn'),
+  focusPlayMixesInput: document.getElementById('focusPlayMixesInput'),
+  focusPlayMixesLabel: document.getElementById('focusPlayMixesLabel'),
   saveBtn: document.getElementById('saveBtn'),
   pomodoroOverlay: document.getElementById('pomodoroOverlay'),
   closePomodoroBtn: document.getElementById('closePomodoroBtn'),
@@ -254,7 +259,7 @@ function freshState() {
     ],
     videos: [],
     music: { playlists: [] },
-    focus: { enabled: true, sites: [], minutes: 5 },
+    focus: { enabled: true, sites: [], minutes: 5, playMixes: true },
   };
 }
 
@@ -285,6 +290,7 @@ function mergeState(stored) {
         ? s.focus.sites.filter((x) => typeof x === 'string' && x.trim())
         : (s.focus && s.focus.url ? [s.focus.url] : []),
       minutes: clampMinutes(s.focus && s.focus.minutes),
+      playMixes: s.focus ? s.focus.playMixes !== false : true,
     },
   };
 }
@@ -2142,6 +2148,12 @@ function bindSettings() {
     manualSave();
   });
 
+  els.focusPlayMixesInput.addEventListener('change', (e) => {
+    state.focus.playMixes = e.target.checked;
+    updatePlayMixesToggleUi(e.target.checked);
+    manualSave();
+  });
+
   els.exportBtn.addEventListener('click', exportData);
   els.importBtn.addEventListener('click', () => els.importFile.click());
   els.importFile.addEventListener('change', (e) => {
@@ -2158,7 +2170,15 @@ function syncSettingsUI() {
   els.focusMinutesInput.value = String(clampMinutes(state.focus && state.focus.minutes));
   const focusEnabled = state.focus ? state.focus.enabled !== false : true;
   els.focusEnabledInput.checked = focusEnabled;
+  els.focusPlayMixesInput.checked = state.focus ? state.focus.playMixes !== false : true;
+  updatePlayMixesToggleUi(els.focusPlayMixesInput.checked);
   updateFocusToggleUi(focusEnabled);
+}
+
+function updatePlayMixesToggleUi(on) {
+  els.focusPlayMixesLabel.textContent = on ? 'On' : 'Off';
+  els.focusPlayMixesLabel.classList.toggle('on', on);
+  els.focusPlayMixesLabel.classList.toggle('off', !on);
 }
 
 function updateFocusToggleUi(on) {
@@ -2167,6 +2187,7 @@ function updateFocusToggleUi(on) {
   els.focusEnabledLabel.classList.toggle('off', !on);
   els.focusSitesInput.disabled = !on;
   els.focusMinutesInput.disabled = !on;
+  els.focusPlayMixesInput.disabled = !on;
 }
 
 function bindUi() {
@@ -2184,9 +2205,16 @@ function bindUi() {
     if (e.target === els.settingsOverlay) els.settingsOverlay.classList.remove('open');
   });
 
+  els.focusBtn.addEventListener('click', () => els.focusOverlay.classList.add('open'));
+  els.closeFocusBtn.addEventListener('click', () => els.focusOverlay.classList.remove('open'));
+  els.focusOverlay.addEventListener('click', (e) => {
+    if (e.target === els.focusOverlay) els.focusOverlay.classList.remove('open');
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       els.settingsOverlay.classList.remove('open');
+      els.focusOverlay.classList.remove('open');
       els.pomodoroOverlay.classList.remove('open');
       closeVideoPlayer();
       closeMusicOverlay();

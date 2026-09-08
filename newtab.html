@@ -25,6 +25,7 @@
     <div class="tool-group">
       <button type="button" class="tool-btn" id="cycleWallpaperBtn" title="Next wallpaper">🎨</button>
       <button type="button" class="tool-btn" id="pomodoroBtn" title="Pomodoro timer">🍅</button>
+      <button type="button" class="tool-btn" id="focusBtn" title="Focus mode settings"><span class="tool-ico">◎</span><span class="tl">Focus</span></button>
       <button type="button" class="tool-btn" id="saveBtn" title="Save all changes">💾</button>
       <button type="button" class="tool-btn" id="settingsBtn" title="Dashboard settings">⚙</button>
     </div>
@@ -57,6 +58,28 @@
       </section>
 
       <section class="field-group">
+        <span class="field-label">Wallpaper</span>
+        <div class="wp-gallery" id="wpGallery"></div>
+      </section>
+
+      <section class="field-group">
+        <span class="field-label">Data</span>
+        <div class="btn-row">
+          <button type="button" class="ghost-btn" id="exportBtn">Export</button>
+          <button type="button" class="ghost-btn" id="importBtn">Import</button>
+          <button type="button" class="ghost-btn danger" id="resetBtn">Reset</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="focus-overlay" id="focusOverlay">
+    <button type="button" class="icon-btn focus-overlay-close" id="closeFocusBtn" title="Close focus settings">✕</button>
+    <div class="focus-card">
+      <h2 class="focus-title">Focus mode</h2>
+
+      <section class="field-group">
         <span class="field-label">Focus mode</span>
         <label class="switch-row">
           <span class="switch">
@@ -81,20 +104,17 @@
       </section>
 
       <section class="field-group">
-        <span class="field-label">Wallpaper</span>
-        <div class="wp-gallery" id="wpGallery"></div>
+        <span class="field-label">Play mixes</span>
+        <label class="switch-row">
+          <span class="switch">
+            <input type="checkbox" id="focusPlayMixesInput">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </span>
+          <span class="switch-label" id="focusPlayMixesLabel">On</span>
+        </label>
+        <p class="field-hint">Whenever on, YouTube mixes that keep playing in the background are exempt from Focus mode. A mix is any YouTube page whose URL contains "index=".</p>
       </section>
-
-      <section class="field-group">
-        <span class="field-label">Data</span>
-        <div class="btn-row">
-          <button type="button" class="ghost-btn" id="exportBtn">Export</button>
-          <button type="button" class="ghost-btn" id="importBtn">Import</button>
-          <button type="button" class="ghost-btn danger" id="resetBtn">Reset</button>
-          <input type="file" id="importFile" accept="application/json,.json" hidden>
-        </div>
-      </section>
-    </aside>
+    </div>
   </div>
 
   <div class="pomodoro-overlay" id="pomodoroOverlay">

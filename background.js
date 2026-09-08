@@ -34,6 +34,7 @@ const BLOCKADE_KEY = 'focusBlockade';
 let focusSites = [];
 let focusMinutes = 5;
 let focusEnabled = true;
+let focusPlayMixes = true;
 let blockades = {}; // { [site]: { endAt, warned } }
 let configReady = Promise.resolve();
 
@@ -88,14 +89,31 @@ function matchedSite(hostname) {
   return '';
 }
 
-function isFocusHost(hostname) {
+function isMixPlaylist(url) {
+  try {
+    const u = new URL(url);
+    const host = normalizeDomain(u.hostname);
+    if (host !== 'youtube.com' && !host.endsWith('.youtube.com')) return false;
+    return u.searchParams.has('index');
+  } catch (e) {
+    return false;
+  }
+}
+
+function shouldExemptFocusUrl(url) {
+  return focusPlayMixes && isMixPlaylist(url);
+}
+
+function isFocusHost(hostname, url) {
   if (!focusEnabled) return false;
+  if (url && shouldExemptFocusUrl(url)) return false;
   return !!matchedSite(hostname);
 }
 
 function applyFocusConfig(cfg) {
   const f = cfg && cfg.focus;
   focusEnabled = f ? f.enabled !== false : true;
+  focusPlayMixes = f ? f.playMixes !== false : true;
   if (f && Array.isArray(f.sites)) {
     focusSites = f.sites.filter((x) => typeof x === 'string' && x.trim());
   } else if (f && f.url) {
@@ -120,7 +138,7 @@ async function loadFocusConfig() {
 async function siteTabs(site) {
   try {
     const tabs = await chrome.tabs.query({});
-    return tabs.filter((t) => t.url && matchedSite(hostOf(t.url)) === site);
+    return tabs.filter((t) => t.url && matchedSite(hostOf(t.url)) === site && !shouldExemptFocusUrl(t.url));
   } catch (e) {
     return [];
   }
@@ -172,6 +190,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'FOCUS_INIT') {
     configReady.then(() => {
       if (!focusEnabled) {
+        sendResponse({ isTarget: false });
+        return;
+      }
+      if (shouldExemptFocusUrl(sender.tab.url)) {
         sendResponse({ isTarget: false });
         return;
       }
