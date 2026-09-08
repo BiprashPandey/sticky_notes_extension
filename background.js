@@ -171,6 +171,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   const site = matchedSite(senderHost);
   if (msg && msg.type === 'FOCUS_INIT') {
     configReady.then(() => {
+      if (!focusEnabled) {
+        sendResponse({ isTarget: false });
+        return;
+      }
       const s = matchedSite(senderHost);
       if (!s) {
         sendResponse({ isTarget: false });
