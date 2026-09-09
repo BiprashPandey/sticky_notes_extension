@@ -252,6 +252,7 @@ const els = {
   addTodoBtn: document.getElementById('addTodoBtn'),
   addRoutineBtn: document.getElementById('addRoutineBtn'),
   addQuoteBtn: document.getElementById('addQuoteBtn'),
+  addCalendarBtn: document.getElementById('addCalendarBtn'),
   addVideoBtn: document.getElementById('addVideoBtn'),
   cycleWallpaperBtn: document.getElementById('cycleWallpaperBtn'),
   pomodoroBtn: document.getElementById('pomodoroBtn'),
@@ -349,7 +350,7 @@ function fitWidget(el) {
 }
 
 function fitAllWidgets() {
-  els.widgets.querySelectorAll('.note, .clock, .todo, .quote, .routine').forEach(fitWidget);
+  els.widgets.querySelectorAll('.note, .clock, .todo, .quote, .routine, .cal-widget').forEach(fitWidget);
 }
 
 function pct(v) {
@@ -395,6 +396,7 @@ function freshState() {
     quotes: [
       { id: uid(), text: QUOTE_DEFAULTS[0].text, author: QUOTE_DEFAULTS[0].author, collapsed: false, pinned: false },
     ],
+    calendars: [],
     videos: [],
     music: { playlists: [] },
     focus: { enabled: true, sites: [], minutes: 5, playMixes: true },
@@ -416,6 +418,7 @@ function mergeState(stored) {
     todos: Array.isArray(s.todos) ? s.todos.filter((t) => t && typeof t === 'object') : [],
     routines: Array.isArray(s.routines) ? s.routines.filter((r) => r && typeof r === 'object') : [],
     quotes: Array.isArray(s.quotes) ? s.quotes.filter((q) => q && typeof q === 'object') : base.quotes,
+    calendars: Array.isArray(s.calendars) ? s.calendars.filter((c) => c && typeof c === 'object') : [],
     videos: Array.isArray(s.videos) ? s.videos.filter((v) => v && typeof v === 'object') : [],
     music: {
       playlists: s.music && Array.isArray(s.music.playlists)
@@ -1739,8 +1742,10 @@ let calGraphOpen = false;
 let calTipKey = null;
 let calTipPinned = false;
 let calTipHideTimer = null;
+let calTipHost = null;
 const CAL_TIP_BACK_DAYS = 20;
 const CAL_TIP_FWD_DAYS = 5;
+const CAL_WIDGET_ASPECT = 1.15;
 
 function calPad(n) {
   return String(n).padStart(2, '0');
@@ -1877,36 +1882,9 @@ function calendarSelectedParts() {
   return p || calTodayParts();
 }
 
-function renderCalendar() {
-  if (!calEls) return;
-  const keepKey = calTipPinned && calTipKey ? calTipKey : null;
-  calTipPinned = keepKey ? true : false;
-  hideCalTooltip();
-
+function calBuildGrid(daysInMonth, offset, todayKey) {
   const vy = calendar.viewYear;
   const vm = calendar.viewMonth;
-  const today = calTodayParts();
-  const todayKey = calKey(today.y, today.m, today.d);
-  const daysInMonth = new Date(vy, vm + 1, 0).getDate();
-  const offset = new Date(vy, vm, 1).getDay();
-
-  calEls.enTitle.textContent = CALENDAR_US_MONTHS[vm] + ' ' + vy;
-
-  const firstBs = adToBs(vy, vm, 1);
-  const lastBs = adToBs(vy, vm, daysInMonth);
-  let bsTitle;
-  if (firstBs.year === lastBs.year && firstBs.month === lastBs.month) {
-    bsTitle = CALENDAR_BS_MONTHS[firstBs.month - 1] + ' ' + firstBs.year;
-  } else if (firstBs.year === lastBs.year) {
-    bsTitle = CALENDAR_BS_MONTHS[firstBs.month - 1] + '–' + CALENDAR_BS_MONTHS[lastBs.month - 1] + ' ' + firstBs.year;
-  } else {
-    bsTitle = CALENDAR_BS_MONTHS[firstBs.month - 1] + ' ' + firstBs.year + ' – ' + CALENDAR_BS_MONTHS[lastBs.month - 1] + ' ' + lastBs.year;
-  }
-  calEls.bsTitle.textContent = bsTitle;
-
-  calEls.prevBtn.disabled = vy === 1943 && vm === 3;
-  calEls.nextBtn.disabled = vy === 2043 && vm === 3;
-
   const frag = document.createDocumentFragment();
   for (let i = 0; i < offset; i++) {
     const e = document.createElement('div');
@@ -1965,12 +1943,63 @@ function renderCalendar() {
     e.className = 'calendar-day empty';
     frag.appendChild(e);
   }
+  return frag;
+}
 
+function calHostDayCell(key, host) {
+  if (!host || !host.querySelector) return null;
+  return host.querySelector('.calendar-day[data-key="' + key + '"]');
+}
+
+function renderCalendar() {
+  if (!calEls) return;
+  const keepKey = calTipPinned && calTipKey ? calTipKey : null;
+  calTipPinned = keepKey ? true : false;
+  hideCalTooltip();
+
+  const vy = calendar.viewYear;
+  const vm = calendar.viewMonth;
+  const today = calTodayParts();
+  const todayKey = calKey(today.y, today.m, today.d);
+  const daysInMonth = new Date(vy, vm + 1, 0).getDate();
+  const offset = new Date(vy, vm, 1).getDay();
+
+  const firstBs = adToBs(vy, vm, 1);
+  const lastBs = adToBs(vy, vm, daysInMonth);
+  let bsTitle;
+  if (firstBs.year === lastBs.year && firstBs.month === lastBs.month) {
+    bsTitle = CALENDAR_BS_MONTHS[firstBs.month - 1] + ' ' + firstBs.year;
+  } else if (firstBs.year === lastBs.year) {
+    bsTitle = CALENDAR_BS_MONTHS[firstBs.month - 1] + '–' + CALENDAR_BS_MONTHS[lastBs.month - 1] + ' ' + firstBs.year;
+  } else {
+    bsTitle = CALENDAR_BS_MONTHS[firstBs.month - 1] + ' ' + firstBs.year + ' – ' + CALENDAR_BS_MONTHS[lastBs.month - 1] + ' ' + lastBs.year;
+  }
+
+  const enTitle = CALENDAR_US_MONTHS[vm] + ' ' + vy;
+  calEls.enTitle.textContent = enTitle;
+  calEls.bsTitle.textContent = bsTitle;
+  calEls.prevBtn.disabled = vy === 1943 && vm === 3;
+  calEls.nextBtn.disabled = vy === 2043 && vm === 3;
+
+  const frag = calBuildGrid(daysInMonth, offset, todayKey);
   calEls.grid.innerHTML = '';
   calEls.grid.appendChild(frag);
+
+  for (const item of state.calendars) {
+    const el = els.widgets.querySelector('.cal-widget[data-cal-widget-id="' + item.id + '"]');
+    if (!el) continue;
+    el.querySelector('.cal-widget-en-title').textContent = enTitle;
+    el.querySelector('.cal-widget-bs-title').textContent = bsTitle;
+    const wgrid = el.querySelector('.cal-widget-grid');
+    wgrid.innerHTML = '';
+    wgrid.appendChild(calBuildGrid(daysInMonth, offset, todayKey));
+  }
+
   renderCalendarGraph();
+
   if (keepKey) {
-    const cell = calEls.grid.querySelector('.calendar-day[data-key="' + keepKey + '"]');
+    let cell = calHostDayCell(keepKey, calTipHost);
+    if (!cell) cell = document.querySelector('.calendar-day[data-key="' + keepKey + '"]');
     if (cell) calTipSync(keepKey, true, cell);
     else hideCalTooltip();
   }
@@ -1982,6 +2011,7 @@ function calTipSync(key, pinned, cell) {
   if (!p) return;
   calTipKey = key;
   calTipPinned = pinned;
+  calTipHost = cell ? (cell.closest('.calendar-shell') || null) : null;
   const entry = calEntry(key);
   const bs = adToBs(p.y, p.m, p.d);
   const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -2007,19 +2037,32 @@ function positionCalTip(cell) {
   }
   clearTimeout(calTipHideTimer);
   const cellRect = cell.getBoundingClientRect();
-  const cardRect = calEls.card.getBoundingClientRect();
-  if (!isFinite(cellRect.width) || !isFinite(cardRect.width)) return;
+  if (!isFinite(cellRect.width)) {
+    hideCalTooltip();
+    return;
+  }
+  const host = cell.closest('.calendar-shell');
+  const hostRect = host ? host.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+  if (!isFinite(hostRect.width)) {
+    hideCalTooltip();
+    return;
+  }
+  const hostLeft = hostRect.width ? hostRect.left : 0;
+  const hostTop = hostRect.height ? hostRect.top : 0;
+  const hostRight = hostRect.width ? hostRect.right : window.innerWidth;
+  const hostBottom = hostRect.height ? hostRect.bottom : window.innerHeight;
 
   tip.classList.add('show');
   tip.style.visibility = 'hidden';
   const tw = tip.offsetWidth;
   const th = tip.offsetHeight;
-  let left = cellRect.left - cardRect.left + cellRect.width / 2 - tw / 2;
-  const maxLeft = cardRect.width - tw - 6;
-  if (left < 6) left = 6;
-  if (left > maxLeft) left = Math.max(6, maxLeft);
-  let top = cellRect.top - cardRect.top - th - 8;
-  if (top < 4) top = cellRect.top - cardRect.top + cellRect.height + 8;
+  let left = cellRect.left + cellRect.width / 2 - tw / 2;
+  const minLeft = hostLeft + 6;
+  const maxLeft = hostRight - tw - 6;
+  if (left < minLeft) left = minLeft;
+  if (left > maxLeft) left = Math.max(minLeft, maxLeft);
+  let top = cellRect.top - th - 8;
+  if (top < hostTop + 4) top = cellRect.bottom + 8;
   tip.style.left = left + 'px';
   tip.style.top = top + 'px';
   tip.style.visibility = 'visible';
@@ -2148,15 +2191,26 @@ function renderCalendarGraph() {
   calEls.graphSvg.innerHTML = html;
 }
 
-function selectCalendarDay(key) {
+function calBuildWeekdays(container) {
+  container.innerHTML = '';
+  CALENDAR_WEEKDAYS.forEach((w, i) => {
+    const el = document.createElement('span');
+    el.className = 'calendar-weekday' + (i === 0 || i === 6 ? ' weekend' : '');
+    el.textContent = w;
+    container.appendChild(el);
+  });
+}
+
+function selectCalendarDay(key, cell) {
   if (!calParseKey(key)) return;
+  calTipHost = cell ? (cell.closest('.calendar-shell') || null) : calTipHost;
   calendar.selected = key;
   calTipKey = null;
   calTipPinned = false;
   saveCalendarState();
   renderCalendar();
-  const cell = calEls.grid.querySelector('.calendar-day[data-key="' + key + '"]');
-  calTipSync(key, true, cell);
+  const c = calHostDayCell(key, calTipHost) || document.querySelector('.calendar-day[data-key="' + key + '"]');
+  calTipSync(key, true, c);
 }
 
 function shiftCalendarMonth(step) {
@@ -2235,7 +2289,7 @@ function initCalendar() {
       '<div class="calendar-tooltip-mark-btns"></div>' +
     '</div>' +
     '<input type="text" class="calendar-tooltip-note-input" maxlength="200" placeholder="Add a note…">';
-  calEls.card.appendChild(tip);
+  document.body.appendChild(tip);
   calEls.tooltip = tip;
 
   const rateWrap = tip.querySelector('.calendar-tooltip-rate-btns');
@@ -2279,12 +2333,7 @@ function initCalendar() {
   };
 
   calEls.weekdays.innerHTML = '';
-  CALENDAR_WEEKDAYS.forEach((w, i) => {
-    const el = document.createElement('span');
-    el.className = 'calendar-weekday' + (i === 0 || i === 6 ? ' weekend' : '');
-    el.textContent = w;
-    calEls.weekdays.appendChild(el);
-  });
+  calBuildWeekdays(calEls.weekdays);
 
   calEls.card.addEventListener('scroll', () => {
     if (!calTipPinned) hideCalTooltip();
@@ -2304,8 +2353,7 @@ function initCalendar() {
     const text = noteInput.value.trim();
     if (text) calPatch(calTipKey, { note: text });
     else calPatch(calTipKey, { note: null });
-    const cell = calEls.grid.querySelector('.calendar-day[data-key="' + calTipKey + '"]');
-    if (cell) {
+    document.querySelectorAll('.calendar-day[data-key="' + calTipKey + '"]').forEach((cell) => {
       let noteEl = cell.querySelector('.calendar-day-note');
       if (text) {
         if (!noteEl) {
@@ -2318,7 +2366,7 @@ function initCalendar() {
       } else if (noteEl) {
         noteEl.remove();
       }
-    }
+    });
   });
 
   rateBtns.forEach((b) => {
@@ -2367,7 +2415,112 @@ function initCalendar() {
 
   calEls.grid.addEventListener('click', (e) => {
     const cell = e.target.closest('.calendar-day[data-key]');
-    if (cell) selectCalendarDay(cell.dataset.key);
+    if (cell) selectCalendarDay(cell.dataset.key, cell);
+  });
+}
+
+/* ---------------- Calendar widget ---------------- */
+
+function addCalendar() {
+  const item = { id: uid(), collapsed: false, pinned: false };
+  state.calendars.push(item);
+  saveState();
+  renderCalendarWidgets();
+}
+
+function renderCalendarWidgets() {
+  els.widgets.querySelectorAll('.cal-widget').forEach((w) => w.remove());
+  for (const item of state.calendars) renderCalendarWidget(item);
+  const changed = layoutRow(state.calendars, (id) => els.widgets.querySelector('.cal-widget[data-cal-widget-id="' + id + '"]'), 0.42);
+  if (changed) saveState();
+  renderCalendar();
+}
+
+function renderCalendarWidget(item) {
+  const el = document.createElement('div');
+  el.className = 'cal-widget calendar-shell' + (item.collapsed ? ' collapsed' : '') + (item.h || item.hpct ? ' fixed' : '');
+  el.dataset.calWidgetId = item.id;
+  el.style.left = clampPct(item.x) + '%';
+  el.style.top = clampPct(item.y) + '%';
+  if (item.wpct != null) el.style.width = item.wpct + 'vw';
+  else if (item.w) el.style.width = Math.max(220, item.w) + 'px';
+  if (item.hpct != null) el.style.height = item.hpct + 'vh';
+  else if (item.h) el.style.height = item.h + 'px';
+
+  el.innerHTML =
+    '<div class="cal-widget-header">' +
+      '<button type="button" class="icon-btn cal-widget-pin-btn" title="Pin">📌</button>' +
+      '<span class="cal-widget-title"><span class="cal-widget-en-title"></span> <span class="cal-widget-bs-title"></span></span>' +
+      '<span class="note-spacer"></span>' +
+      '<button type="button" class="icon-btn cal-widget-expand-btn" title="Open full calendar">⛶</button>' +
+      '<button type="button" class="icon-btn cal-widget-collapse-btn" title="Collapse">–</button>' +
+      '<button type="button" class="icon-btn cal-widget-delete-btn" title="Remove calendar widget">✕</button>' +
+    '</div>' +
+    '<div class="cal-widget-tools">' +
+      '<button type="button" class="cal-widget-nav" title="Previous month">◀</button>' +
+      '<button type="button" class="cal-widget-today" title="Jump to today">Today</button>' +
+      '<button type="button" class="cal-widget-nav" title="Next month">▶</button>' +
+    '</div>' +
+    '<div class="cal-widget-weekdays calendar-weekdays"></div>' +
+    '<div class="cal-widget-scroll"><div class="cal-widget-grid calendar-grid"></div></div>' +
+    '<div class="cal-widget-resize" title="Drag to resize — double-click to reset"></div>';
+  els.widgets.appendChild(el);
+
+  calBuildWeekdays(el.querySelector('.cal-widget-weekdays'));
+
+  bindPin(el, el.querySelector('.cal-widget-pin-btn'), item);
+
+  el.querySelector('.cal-widget-collapse-btn').addEventListener('click', () => {
+    item.collapsed = !item.collapsed;
+    el.classList.toggle('collapsed', item.collapsed);
+    saveState();
+  });
+  el.querySelector('.cal-widget-expand-btn').addEventListener('click', openCalendar);
+  el.querySelector('.cal-widget-delete-btn').addEventListener('click', () => {
+    state.calendars = state.calendars.filter((c) => c.id !== item.id);
+    el.remove();
+    saveState();
+  });
+
+  const navBtns = el.querySelectorAll('.cal-widget-nav');
+  navBtns[0].addEventListener('click', () => shiftCalendarMonth(-1));
+  navBtns[1].addEventListener('click', () => shiftCalendarMonth(1));
+  el.querySelector('.cal-widget-today').addEventListener('click', goCalendarToday);
+
+  const grid = el.querySelector('.cal-widget-grid');
+  grid.addEventListener('click', (e) => {
+    const cell = e.target.closest('.calendar-day[data-key]');
+    if (cell) selectCalendarDay(cell.dataset.key, cell);
+  });
+
+  el.querySelector('.cal-widget-scroll').addEventListener('scroll', () => {
+    if (!calTipPinned) hideCalTooltip();
+  });
+
+  makeDraggable(el, el.querySelector('.cal-widget-header'), () => {
+    item.x = pct(el.style.left);
+    item.y = pct(el.style.top);
+    saveState();
+  });
+
+  const resizeHandle = el.querySelector('.cal-widget-resize');
+  makeResizable(el, resizeHandle, (w, h) => {
+    item.w = w;
+    item.h = h;
+    delete item.wpct;
+    delete item.hpct;
+    el.classList.add('fixed');
+    saveState();
+  }, { aspect: CAL_WIDGET_ASPECT, disabled: () => item.pinned });
+  resizeHandle.addEventListener('dblclick', () => {
+    delete item.w;
+    delete item.h;
+    delete item.wpct;
+    delete item.hpct;
+    el.classList.remove('fixed');
+    el.style.width = '';
+    el.style.height = '';
+    saveState();
   });
 }
 
@@ -2724,6 +2877,7 @@ function makeResizable(el, handle, onResize, opts) {
   const minW = (opts && opts.minW) != null ? opts.minW : Math.max(140, Math.round(window.innerWidth * 0.1));
   const minH = (opts && opts.minH) != null ? opts.minH : Math.max(80, Math.round(window.innerHeight * 0.12));
   const maxW = (opts && opts.maxW) != null ? opts.maxW : Math.round(window.innerWidth * 0.85);
+  const aspect = opts && opts.aspect ? opts.aspect : null;
   const disabled = opts && typeof opts.disabled === 'function' ? opts.disabled : null;
   let resizing = false;
   let startX = 0;
@@ -2747,8 +2901,25 @@ function makeResizable(el, handle, onResize, opts) {
 
   handle.addEventListener('pointermove', (e) => {
     if (!resizing) return;
-    const w = Math.min(Math.max(startW + (e.clientX - startX), minW), maxW);
-    const h = Math.min(Math.max(startH + (e.clientY - startY), minH), window.innerHeight - 60);
+    const maxH = window.innerHeight - 60;
+    let w = startW + (e.clientX - startX);
+    let h = startH + (e.clientY - startY);
+    if (aspect) {
+      if (Math.abs(e.clientX - startX) >= Math.abs(e.clientY - startY)) {
+        w = Math.min(Math.max(w, minW), maxW);
+        h = w / aspect;
+        if (h < minH) { h = minH; w = h * aspect; }
+        if (h > maxH) { h = maxH; w = h * aspect; }
+      } else {
+        h = Math.min(Math.max(h, minH), maxH);
+        w = h * aspect;
+        if (w < minW) { w = minW; h = w / aspect; }
+        if (w > maxW) { w = maxW; h = w / aspect; }
+      }
+    } else {
+      w = Math.min(Math.max(w, minW), maxW);
+      h = Math.min(Math.max(h, minH), maxH);
+    }
     el.style.width = w + 'px';
     el.style.height = h + 'px';
     if (onResize) onResize(w, h);
@@ -2773,6 +2944,7 @@ const LAYOUT_KINDS = {
   quote: { selector: '.quote', idAttr: 'quoteId', minW: 240 },
   routine: { selector: '.routine', idAttr: 'routineId', minW: 240 },
   video: { selector: '.video', idAttr: 'videoId', minW: 240 },
+  calendar: { selector: '.cal-widget', idAttr: 'calWidgetId', minW: 220 },
 };
 
 function round3(n) {
@@ -2973,6 +3145,7 @@ function bindUi() {
   els.addTodoBtn.addEventListener('click', addTodo);
   els.addRoutineBtn.addEventListener('click', addRoutine);
   els.addQuoteBtn.addEventListener('click', addQuote);
+  els.addCalendarBtn.addEventListener('click', addCalendar);
   els.cycleWallpaperBtn.addEventListener('click', nextWallpaper);
   els.saveBtn.addEventListener('click', manualSave);
   document.addEventListener('contextmenu', manualSave);
@@ -3104,6 +3277,7 @@ function renderEverything() {
   renderTodos();
   renderRoutines();
   renderQuotes();
+  renderCalendarWidgets();
   renderMusic();
   syncSettingsUI();
   restartCycleTimer();
