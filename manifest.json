@@ -7,24 +7,41 @@
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
-  "permissions": ["storage", "tabs", "alarms", "declarativeNetRequestWithHostAccess"],
-  "host_permissions": ["https://www.youtube.com/*"],
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["focus.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/content/focus.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["videos/*", "newtab.html"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "videos/*",
+        "newtab.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "src/background/background.js",
+    "type": "module"
   },
   "icons": {
     "16": "icons/icon16.png",

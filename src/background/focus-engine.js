@@ -1,33 +1,3 @@
-// YouTube rejects embedded players whose requests carry no HTTP Referer
-// (error 153, embedder.identity.missing.referrer). Chrome never sends a
-// Referer for iframes on extension pages, so we set one for sub-frame
-// requests to YouTube initiated by THIS extension only.
-
-function setupYtRefererRule() {
-  const rule = {
-    id: 1,
-    priority: 1,
-    condition: {
-      initiatorDomains: [chrome.runtime.id],
-      requestDomains: ['www.youtube.com'],
-      resourceTypes: ['sub_frame'],
-    },
-    action: {
-      type: 'modifyHeaders',
-      requestHeaders: [
-        {
-          header: 'referer',
-          operation: 'set',
-          value: 'https://chrome.google.com/webstore/detail/' + chrome.runtime.id,
-        },
-      ],
-    },
-  };
-  chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: [1], addRules: [rule] });
-}
-
-/* ---------------- Focus mode ---------------- */
-
 const WARN_LEAD_MS = 60 * 1000;
 const BLOCKADE_KEY = 'focusBlockade';
 
@@ -278,14 +248,6 @@ function setupFocusTicking() {
   chrome.alarms.create('focusTick', { periodInMinutes: 0.5 });
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  setupYtRefererRule();
-  loadFocusConfig();
-});
-chrome.runtime.onStartup.addListener(() => {
-  setupYtRefererRule();
-  loadFocusConfig();
-});
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
@@ -293,15 +255,19 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (ch) applyFocusConfig(ch.newValue);
 });
 
-(async function initFocus() {
-  configReady = loadFocusConfig();
-  await configReady;
-  await loadBlockades();
-  for (const site of Object.keys(blockades)) {
-    const b = blockades[site];
-    if (b && b.endAt <= Date.now()) {
-      await endBlockade(site, true);
+export function initFocusEngine() {
+  chrome.runtime.onInstalled.addListener(() => { loadFocusConfig(); });
+  chrome.runtime.onStartup.addListener(() => { loadFocusConfig(); });
+  (async function initFocus() {
+    configReady = loadFocusConfig();
+    await configReady;
+    await loadBlockades();
+    for (const site of Object.keys(blockades)) {
+      const b = blockades[site];
+      if (b && b.endAt <= Date.now()) {
+        await endBlockade(site, true);
+      }
     }
-  }
-  setupFocusTicking();
-})();
+    setupFocusTicking();
+  })();
+}

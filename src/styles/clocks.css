@@ -1,0 +1,71 @@
+/* ---------- Clock widgets ---------- */
+
+.clock {
+  position: absolute;
+  min-width: clamp(150px, 11vw, 280px);
+  padding: clamp(8px, 1vh, 15px) clamp(10px, 1vw, 18px);
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-strong);
+  backdrop-filter: blur(18px) saturate(1.35);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  font-family: var(--ui-font);
+}
+
+.clock-label,
+.tz-select {
+  font-family: var(--ui-font);
+}
+
+.clock-header {
+  display: flex;
+  align-items: center;
+  gap: clamp(3px, 0.4vw, 8px);
+}
+
+.clock-label {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: clamp(11px, 0.8vw, 15px);
+  font-weight: 600;
+}
+
+.clock-label:focus {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.35);
+}
+
+.clock-time {
+  margin-top: clamp(4px, 0.5vh, 7px);
+  font-size: clamp(22px, 2vw, 38px);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 12px rgba(2, 6, 23, 0.45);
+}
+
+.clock-date {
+  margin-top: clamp(1px, 0.2vh, 3px);
+  font-size: clamp(10px, 0.7vw, 13.5px);
+  color: var(--text-dim);
+}
+
+.tz-select {
+  width: 100%;
+  margin-top: clamp(6px, 0.8vh, 11px);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #e2e8f0;
+  font-size: clamp(10.5px, 0.7vw, 14px);
+  padding: clamp(5px, 0.5vh, 8px) clamp(6px, 0.6vw, 10px);
+  outline: none;
+  cursor: pointer;
+}
+

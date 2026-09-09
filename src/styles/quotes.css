@@ -1,0 +1,78 @@
+/* ---------- Quote widgets ---------- */
+
+.quote {
+  position: absolute;
+  width: clamp(240px, 18vw, 460px);
+  max-width: 88vw;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(9px, 1vh, 16px) clamp(11px, 1.1vw, 20px);
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-strong);
+  backdrop-filter: blur(18px) saturate(1.35);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  font-family: var(--ui-font);
+}
+
+.quote-header {
+  display: flex;
+  align-items: center;
+  gap: clamp(3px, 0.35vw, 7px);
+}
+
+.quote-mark {
+  font-size: clamp(16px, 1.3vw, 24px);
+  line-height: 1;
+  color: var(--accent);
+  padding: 0 2px;
+}
+
+.quote-text {
+  margin-top: clamp(6px, 0.7vh, 10px);
+  min-height: clamp(18px, 2.4vh, 36px);
+  outline: none;
+  color: var(--text);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(14px, 1.05vw, 20px);
+  line-height: 1.55;
+  word-break: break-word;
+  cursor: text;
+}
+
+.quote.fixed .quote-text {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.quote-text[data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-dim);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.quote-author {
+  margin-top: clamp(7px, 0.9vh, 13px);
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--ui-font);
+  font-size: clamp(10.5px, 0.7vw, 14px);
+  padding: 2px;
+}
+
+.quote-author:focus {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.35);
+}
+
+.quote.collapsed .quote-text,
+.quote.collapsed .quote-author {
+  display: none;
+}
+

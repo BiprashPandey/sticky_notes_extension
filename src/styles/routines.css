@@ -1,0 +1,253 @@
+/* ---------- Routine widgets ---------- */
+
+.routine {
+  position: absolute;
+  width: clamp(260px, 22vw, 460px);
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(8px, 0.9vh, 14px) clamp(9px, 0.85vw, 15px);
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-strong);
+  backdrop-filter: blur(18px) saturate(1.35);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  font-family: var(--ui-font);
+}
+
+.routine-header {
+  display: flex;
+  align-items: center;
+  gap: clamp(3px, 0.35vw, 7px);
+  margin-bottom: clamp(4px, 0.55vh, 8px);
+}
+
+.routine-title {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: clamp(11px, 0.8vw, 15px);
+  font-weight: 600;
+}
+
+.routine-title:focus {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.35);
+}
+
+.routine.collapsed .routine-body {
+  display: none;
+}
+
+.routine-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.routine-head,
+.routine-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(5px, 0.5vw, 9px);
+}
+
+.routine-head {
+  padding: clamp(4px, 0.5vh, 7px) clamp(6px, 0.6vw, 9px);
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-dim);
+  font-size: clamp(10px, 0.68vw, 13px);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  flex: none;
+}
+
+.routine-row {
+  padding: clamp(4px, 0.5vh, 7px) clamp(6px, 0.6vw, 9px);
+  border-radius: 8px;
+  font-size: clamp(11px, 0.8vw, 15px);
+}
+
+.routine-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.routine-rows {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  max-height: clamp(120px, 24vh, 340px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1px, 0.15vh, 3px);
+  padding: clamp(3px, 0.4vh, 6px) 0;
+}
+
+.routine.fixed .routine-rows {
+  max-height: none;
+}
+
+.routine-rows::-webkit-scrollbar {
+  width: clamp(4px, 0.4vw, 8px);
+}
+
+.routine-rows::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+}
+
+.routine-col {
+  min-width: 0;
+  outline: none;
+  border-radius: 4px;
+  padding: 1px 2px;
+  word-break: break-word;
+}
+
+.routine-col:focus {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.routine-col-time {
+  flex: 0 0 22%;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.routine-col-task {
+  flex: 1 1 40%;
+  color: var(--text);
+}
+
+.routine-col-remarks {
+  flex: 1 1 30%;
+  color: var(--text-dim);
+}
+
+.routine-col-check {
+  flex: 0 0 clamp(16px, 1.5vw, 24px);
+  text-align: center;
+}
+
+.routine-check-btn {
+  flex: none;
+  width: clamp(16px, 1.5vw, 24px);
+  height: clamp(16px, 1.5vw, 24px);
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: clamp(11px, 0.75vw, 14px);
+  line-height: 1;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.routine-check-btn:hover {
+  opacity: 1;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.routine-row.done .routine-check-btn {
+  opacity: 1;
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+
+.routine-row.done .routine-col {
+  opacity: 0.6;
+}
+
+.routine-row.done .routine-col-task {
+  text-decoration: line-through;
+}
+
+.routine-row-del {
+  flex: none;
+  opacity: 0;
+}
+
+.routine-row:hover .routine-row-del {
+  opacity: 0.72;
+}
+
+.routine-row-del:hover {
+  opacity: 1;
+}
+
+.routine-add {
+  display: flex;
+  align-items: center;
+  gap: clamp(5px, 0.5vw, 9px);
+  margin-top: clamp(6px, 0.7vh, 10px);
+  padding-top: clamp(6px, 0.75vh, 12px);
+  border-top: 1px solid var(--glass-border);
+  flex: none;
+}
+
+.routine-add input {
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: clamp(11px, 0.8vw, 15px);
+}
+
+.routine-add input::placeholder {
+  color: var(--text-dim);
+}
+
+.routine-time-input {
+  flex: 0 0 20%;
+}
+
+.routine-task-input {
+  flex: 1 1 38%;
+}
+
+.routine-remarks-input {
+  flex: 1 1 28%;
+}
+
+.routine-submit {
+  flex: none;
+  width: clamp(22px, 1.7vw, 32px);
+  height: clamp(22px, 1.7vw, 32px);
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #0b1220;
+  font-family: var(--ui-font);
+  font-size: clamp(13px, 0.95vw, 17px);
+  font-weight: 700;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+
+.routine-submit:hover {
+  filter: brightness(1.12);
+}
+
+.routine-submit:active {
+  transform: scale(0.92);
+}
+

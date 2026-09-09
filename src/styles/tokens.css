@@ -1,0 +1,20 @@
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('../../fonts/JetBrainsMono.woff2') format('woff2');
+}
+
+:root {
+  --ui-font: 'JetBrains Mono', 'Cascadia Code', 'Courier New', monospace;
+  --text: #f8fafc;
+  --text-dim: rgba(248, 250, 252, 0.72);
+  --glass: rgba(255, 255, 255, 0.09);
+  --glass-strong: rgba(15, 23, 42, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --accent: #7aa2ff;
+  --accent-soft: rgba(122, 162, 255, 0.25);
+  --radius: clamp(10px, 1vw, 18px);
+  --shadow: 0 14px 34px rgba(2, 6, 23, 0.4);
+}

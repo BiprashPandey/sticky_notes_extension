@@ -1,0 +1,47 @@
+.icon-btn {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: clamp(11px, 0.85vw, 15px);
+  line-height: 1;
+  padding: clamp(4px, 0.5vh, 7px) clamp(5px, 0.55vw, 9px);
+  border-radius: 7px;
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.icon-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.icon-btn.pinned {
+  color: var(--accent);
+  opacity: 1;
+  background: var(--accent-soft);
+}
+
+.ghost-btn {
+  flex: 1;
+  border: 1px solid var(--glass-border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: clamp(11px, 0.8vw, 15px);
+  font-weight: 500;
+  padding: clamp(7px, 0.8vh, 12px) 0;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ghost-btn:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.ghost-btn.danger {
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.4);
+}
