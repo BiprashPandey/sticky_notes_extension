@@ -19,6 +19,7 @@
 
     <div class="tool-group">
       <button type="button" class="tool-btn" id="cycleWallpaperBtn" title="Next wallpaper">🎨</button>
+      <button type="button" class="tool-btn" id="calendarBtn" title="Day tracker calendar">📅</button>
       <button type="button" class="tool-btn" id="pomodoroBtn" title="Pomodoro timer">🍅</button>
       <button type="button" class="tool-btn" id="focusBtn" title="Focus mode settings"><span class="focus-led"></span><span class="tool-ico">◎</span></button>
       <button type="button" class="tool-btn" id="saveBtn" title="Save all changes">💾</button>
@@ -177,6 +178,35 @@
 
       <div class="pomodoro-dots" title="Focus sessions until long break"></div>
       <p class="pomodoro-hint"></p>
+    </div>
+  </div>
+
+  <div class="calendar-overlay" id="calendarOverlay">
+    <button type="button" class="icon-btn calendar-overlay-close" id="closeCalendarBtn" title="Close calendar">✕</button>
+    <div class="calendar-card">
+      <div class="calendar-head">
+        <button type="button" class="calendar-nav" id="calendarPrevBtn" title="Previous month">◀</button>
+        <div class="calendar-title">
+          <div class="calendar-en-title" id="calEnTitle"></div>
+          <div class="calendar-bs-title" id="calBsTitle"></div>
+        </div>
+        <button type="button" class="calendar-nav" id="calendarNextBtn" title="Next month">▶</button>
+      </div>
+      <div class="calendar-today-holder">
+        <button type="button" class="calendar-today-btn" id="calendarTodayBtn" title="Jump to today">Today</button>
+      </div>
+
+      <div class="calendar-weekdays" id="calendarWeekdays"></div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+
+      <div class="calendar-rate" id="calendarRateRow">
+        <span class="calendar-rate-label">Rate</span>
+        <div class="calendar-rate-btns" id="calendarRateBtns"></div>
+        <button type="button" class="calendar-clear" id="calendarClearRateBtn" title="Clear rating">✕</button>
+      </div>
+      <input class="calendar-note-input" id="calendarNoteInput" type="text" placeholder="Note for this day…" maxlength="200">
+      <div class="calendar-marks" id="calendarMarks"></div>
+      <p class="calendar-hint" id="calendarHint"></p>
     </div>
   </div>
 

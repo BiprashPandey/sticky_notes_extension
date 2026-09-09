@@ -21,6 +21,127 @@ const POMODORO_MODES = {
 const POMODORO_RING_CIRCUMFERENCE = 2 * Math.PI * 90;
 const POMODORO_CYCLE = 4;
 
+const CALENDAR_KEY = 'dashboardCalendarV1';
+const CALENDAR_US_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const CALENDAR_BS_MONTHS = ['Baisakh', 'Jestha', 'Ashar', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+const CALENDAR_BS_MONTHS_SHORT = ['Bai', 'Jes', 'Asa', 'Shr', 'Bha', 'Ash', 'Kar', 'Man', 'Pou', 'Mag', 'Fal', 'Cha'];
+const CALENDAR_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const CALENDAR_BS_ANCHOR_UTC = Date.UTC(1943, 3, 14);
+const CALENDAR_BS_DAYS = {
+  2000: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2001: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2002: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2003: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2004: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2005: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2006: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2007: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2008: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 29, 31],
+  2009: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2010: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2011: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2012: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+  2013: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2014: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2015: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2016: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+  2017: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2018: [31, 32, 31, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2019: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2020: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+  2021: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2022: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+  2023: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2024: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+  2025: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2026: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2027: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2028: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2029: [31, 31, 32, 31, 32, 30, 30, 29, 30, 29, 30, 30],
+  2030: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2031: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2032: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2033: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2034: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2035: [30, 32, 31, 32, 31, 31, 29, 30, 30, 29, 29, 31],
+  2036: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2037: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2038: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2039: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+  2040: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2041: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2042: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2043: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+  2044: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2045: [31, 32, 31, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2046: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2047: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+  2048: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2049: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+  2050: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2051: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+  2052: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2053: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+  2054: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2055: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2056: [31, 31, 32, 31, 32, 30, 30, 29, 30, 29, 30, 30],
+  2057: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2058: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2059: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2060: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2061: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2062: [30, 32, 31, 32, 31, 31, 29, 30, 29, 30, 29, 31],
+  2063: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2064: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2065: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2066: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 29, 31],
+  2067: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2068: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2069: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2070: [31, 31, 31, 32, 31, 31, 29, 30, 30, 29, 30, 30],
+  2071: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2072: [31, 32, 31, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2073: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2074: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+  2075: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2076: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+  2077: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2078: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+  2079: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2080: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+  2081: [31, 31, 32, 32, 31, 30, 30, 30, 29, 30, 30, 30],
+  2082: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 30, 30],
+  2083: [31, 31, 32, 31, 31, 30, 30, 30, 29, 30, 30, 30],
+  2084: [31, 31, 32, 31, 31, 30, 30, 30, 29, 30, 30, 30],
+  2085: [31, 32, 31, 32, 30, 31, 30, 30, 29, 30, 30, 30],
+  2086: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 30, 30],
+  2087: [31, 31, 32, 31, 31, 31, 30, 30, 29, 30, 30, 30],
+  2088: [30, 31, 32, 32, 30, 31, 30, 30, 29, 30, 30, 30],
+  2089: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 30, 30],
+  2090: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 30, 30],
+  2091: [31, 31, 32, 31, 31, 31, 30, 30, 29, 30, 30, 30],
+  2092: [30, 31, 32, 32, 31, 30, 30, 30, 29, 30, 30, 30],
+  2093: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 30, 30],
+  2094: [31, 31, 32, 31, 31, 30, 30, 30, 29, 30, 30, 30],
+  2095: [31, 31, 32, 31, 31, 31, 30, 29, 30, 30, 30, 30],
+  2096: [30, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
+  2097: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 30, 30],
+  2098: [31, 31, 32, 31, 31, 31, 29, 30, 29, 30, 30, 31],
+  2099: [31, 31, 32, 31, 31, 31, 30, 29, 29, 30, 30, 30],
+  2100: [31, 32, 31, 32, 30, 31, 30, 29, 30, 29, 30, 30],
+};
+const CALENDAR_MARKS = {
+  red:    { label: 'Red',    color: '#ef4444' },
+  orange: { label: 'Orange', color: '#fb8c24' },
+  yellow: { label: 'Yellow', color: '#facc15' },
+  green:  { label: 'Green',  color: '#22c55e' },
+  blue:   { label: 'Blue',   color: '#3b82f6' },
+  purple: { label: 'Purple', color: '#a855f7' },
+  pink:   { label: 'Pink',   color: '#ec4899' },
+  gray:   { label: 'White',  color: '#e2e8f0' },
+};
+const CALENDAR_DAY_MS = 86400000;
+
 const QUOTE_DEFAULTS = [
   { text: 'The best way to predict the future is to invent it.', author: 'Alan Kay' },
   { text: 'In the middle of difficulty lies opportunity.', author: 'Albert Einstein' },
@@ -134,6 +255,21 @@ const els = {
   addVideoBtn: document.getElementById('addVideoBtn'),
   cycleWallpaperBtn: document.getElementById('cycleWallpaperBtn'),
   pomodoroBtn: document.getElementById('pomodoroBtn'),
+  calendarBtn: document.getElementById('calendarBtn'),
+  calendarOverlay: document.getElementById('calendarOverlay'),
+  closeCalendarBtn: document.getElementById('closeCalendarBtn'),
+  calendarPrevBtn: document.getElementById('calendarPrevBtn'),
+  calendarNextBtn: document.getElementById('calendarNextBtn'),
+  calendarTodayBtn: document.getElementById('calendarTodayBtn'),
+  calEnTitle: document.getElementById('calEnTitle'),
+  calBsTitle: document.getElementById('calBsTitle'),
+  calendarWeekdays: document.getElementById('calendarWeekdays'),
+  calendarGrid: document.getElementById('calendarGrid'),
+  calendarRateBtns: document.getElementById('calendarRateBtns'),
+  calendarClearRateBtn: document.getElementById('calendarClearRateBtn'),
+  calendarNoteInput: document.getElementById('calendarNoteInput'),
+  calendarMarks: document.getElementById('calendarMarks'),
+  calendarHint: document.getElementById('calendarHint'),
   focusBtn: document.getElementById('focusBtn'),
   focusLed: document.getElementById('focusBtn').querySelector('.focus-led'),
   focusOverlay: document.getElementById('focusOverlay'),
@@ -1586,7 +1722,7 @@ function pomoPlayChime() {
       gain.gain.setValueAtTime(0.0001, t + off);
       gain.gain.exponentialRampToValueAtTime(0.2, t + off + 0.03);
       gain.gain.exponentialRampToValueAtTime(0.0001, t + off + 0.25);
-      osc.connect(gain).connect(pomoAudio.destination);
+osc.connect(gain).connect(pomoAudio.destination);
       osc.start(t + off);
       osc.stop(t + off + 0.27);
     });
@@ -1595,7 +1731,416 @@ function pomoPlayChime() {
   }
 }
 
+/* ---------------- Calendar (day tracker) ---------------- */
 
+let calendar = null;
+let calEls = null;
+
+function calPad(n) {
+  return String(n).padStart(2, '0');
+}
+
+function calKey(y, m, d) {
+  return y + '-' + calPad(m + 1) + '-' + calPad(d);
+}
+
+function calParseKey(key) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key));
+  if (!m) return null;
+  return { y: Number(m[1]), m: Number(m[2]) - 1, d: Number(m[3]) };
+}
+
+function calTodayParts() {
+  const t = new Date();
+  return { y: t.getFullYear(), m: t.getMonth(), d: t.getDate() };
+}
+
+function bsYearDays(by) {
+  return CALENDAR_BS_DAYS[by] ? CALENDAR_BS_DAYS[by].reduce((a, b) => a + b, 0) : 365;
+}
+
+function bsMonthDays(by, bm) {
+  const y = CALENDAR_BS_DAYS[by];
+  return y && y[bm - 1] ? y[bm - 1] : 30;
+}
+
+function adToBs(y, m, d) {
+  const dayNum = Math.floor(Date.UTC(y, m, d) / CALENDAR_DAY_MS);
+  const anchorNum = Math.floor(CALENDAR_BS_ANCHOR_UTC / CALENDAR_DAY_MS);
+  let diff = Math.max(0, dayNum - anchorNum);
+  let bsYear = 2000;
+  while (bsYear < 2100) {
+    const dim = bsYearDays(bsYear);
+    if (diff < dim) break;
+    diff -= dim;
+    bsYear++;
+  }
+  let bsMonth = 1;
+  while (bsMonth < 12) {
+    const dim = bsMonthDays(bsYear, bsMonth);
+    if (diff < dim) break;
+    diff -= dim;
+    bsMonth++;
+  }
+  return { year: bsYear, month: bsMonth, day: Math.min(diff, bsMonthDays(bsYear, bsMonth)) + 1 };
+}
+
+function calRatingStyle(r) {
+  const v = Math.min(10, Math.max(1, Number(r) || 1));
+  const hue = (120 * (v - 1)) / 9;
+  const sat = 85;
+  const lite = 48 + v * 0.8;
+  return { hue, sat, lite };
+}
+
+function calRatingBg(r) {
+  const s = calRatingStyle(r);
+  return 'hsla(' + s.hue + ',' + s.sat + '%,' + s.lite + '%,0.44)';
+}
+
+function calRatingColor(r) {
+  const s = calRatingStyle(r);
+  return 'hsl(' + s.hue + ',' + s.sat + '%,' + s.lite + '%)';
+}
+
+function loadCalendarState() {
+  const parts = calTodayParts();
+  const todayKey = calKey(parts.y, parts.m, parts.d);
+  const def = { viewYear: parts.y, viewMonth: parts.m, selected: todayKey, days: {} };
+  try {
+    const raw = localStorage.getItem(CALENDAR_KEY);
+    if (raw) {
+      const c = JSON.parse(raw);
+      if (c && typeof c === 'object') {
+        const days = c.days && typeof c.days === 'object' ? c.days : {};
+        const sel = calParseKey(c.selected) ? c.selected : todayKey;
+        let vy = Math.round(Number(c.viewYear));
+        let vm = Math.round(Number(c.viewMonth));
+        if (!isFinite(vy) || !isFinite(vm) || vy < 1943 || vy > 2043) {
+          vy = parts.y;
+          vm = parts.m;
+        } else {
+          vm = Math.min(11, Math.max(0, vm));
+        }
+        const clean = {};
+        for (const k of Object.keys(days)) {
+          const p = calParseKey(k);
+          if (!p) continue;
+          const d = days[k] && typeof days[k] === 'object' ? days[k] : {};
+          const rec = {};
+          const rating = Number(d.rating);
+          if (isFinite(rating) && rating >= 1 && rating <= 10) rec.rating = Math.round(rating);
+          if (typeof d.note === 'string' && d.note.trim()) rec.note = d.note.trim();
+          if (CALENDAR_MARKS[d.mark]) rec.mark = d.mark;
+          if (rec.rating || rec.note || rec.mark) clean[k] = rec;
+        }
+        return { viewYear: vy, viewMonth: vm, selected: sel, days: clean };
+      }
+    }
+  } catch (e) {
+    /* fall through to defaults */
+  }
+  return def;
+}
+
+function saveCalendarState() {
+  try {
+    localStorage.setItem(CALENDAR_KEY, JSON.stringify(calendar));
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+function calEntry(key) {
+  return calendar.days[key] || null;
+}
+
+function calPatch(key, patch) {
+  const cur = calendar.days[key] || {};
+  const next = Object.assign({}, cur, patch);
+  if (!next.rating && !next.note && !next.mark) {
+    delete calendar.days[key];
+  } else {
+    calendar.days[key] = next;
+  }
+  saveCalendarState();
+}
+
+function calendarSelectedParts() {
+  const p = calParseKey(calendar.selected);
+  return p || calTodayParts();
+}
+
+function renderCalendar() {
+  if (!calEls) return;
+
+  const vy = calendar.viewYear;
+  const vm = calendar.viewMonth;
+  const today = calTodayParts();
+  const todayKey = calKey(today.y, today.m, today.d);
+  const daysInMonth = new Date(vy, vm + 1, 0).getDate();
+  const offset = new Date(vy, vm, 1).getDay();
+
+  calEls.enTitle.textContent = CALENDAR_US_MONTHS[vm] + ' ' + vy;
+
+  const firstBs = adToBs(vy, vm, 1);
+  const lastBs = adToBs(vy, vm, daysInMonth);
+  let bsTitle;
+  if (firstBs.year === lastBs.year && firstBs.month === lastBs.month) {
+    bsTitle = CALENDAR_BS_MONTHS[firstBs.month - 1] + ' ' + firstBs.year;
+  } else if (firstBs.year === lastBs.year) {
+    bsTitle = CALENDAR_BS_MONTHS[firstBs.month - 1] + '–' + CALENDAR_BS_MONTHS[lastBs.month - 1] + ' ' + firstBs.year;
+  } else {
+    bsTitle = CALENDAR_BS_MONTHS[firstBs.month - 1] + ' ' + firstBs.year + ' – ' + CALENDAR_BS_MONTHS[lastBs.month - 1] + ' ' + lastBs.year;
+  }
+  calEls.bsTitle.textContent = bsTitle;
+
+  calEls.prevBtn.disabled = vy === 1943 && vm === 3;
+  calEls.nextBtn.disabled = vy === 2043 && vm === 3;
+
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < offset; i++) {
+    const e = document.createElement('div');
+    e.className = 'calendar-day empty';
+    frag.appendChild(e);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = calKey(vy, vm, d);
+    const bs = adToBs(vy, vm, d);
+    const entry = calEntry(key);
+    const cell = document.createElement('div');
+    cell.className = 'calendar-day';
+    cell.dataset.key = key;
+
+    if (key === todayKey) cell.classList.add('today');
+    if (key === calendar.selected) cell.classList.add('selected');
+
+    if (entry && entry.rating) cell.style.background = calRatingBg(entry.rating);
+    if (entry && entry.mark) {
+      let shadow = 'inset 0 0 0 2px ' + CALENDAR_MARKS[entry.mark].color;
+      if (key === calendar.selected) shadow += ', 0 0 0 2px var(--accent-soft)';
+      cell.style.boxShadow = shadow;
+      const dot = document.createElement('span');
+      dot.className = 'calendar-day-mark';
+      dot.style.background = CALENDAR_MARKS[entry.mark].color;
+      dot.title = CALENDAR_MARKS[entry.mark].label;
+      cell.appendChild(dot);
+    }
+
+    const en = document.createElement('div');
+    en.className = 'calendar-day-en';
+    en.textContent = String(d);
+    cell.appendChild(en);
+
+    const bsl = document.createElement('div');
+    bsl.className = 'calendar-day-bs';
+    bsl.textContent = (bs.day === 1 ? CALENDAR_BS_MONTHS_SHORT[bs.month - 1] + ' ' : '') + bs.day;
+    cell.appendChild(bsl);
+
+    if (entry && entry.note) {
+      const note = document.createElement('div');
+      note.className = 'calendar-day-note';
+      note.textContent = entry.note;
+      note.title = entry.note;
+      cell.appendChild(note);
+    }
+
+    frag.appendChild(cell);
+  }
+  const remainder = offset + daysInMonth;
+  for (let i = remainder; i % 7 !== 0; i++) {
+    const e = document.createElement('div');
+    e.className = 'calendar-day empty';
+    frag.appendChild(e);
+  }
+
+  calEls.grid.innerHTML = '';
+  calEls.grid.appendChild(frag);
+  renderCalendarControls();
+}
+
+function renderCalendarControls() {
+  if (!calEls) return;
+
+  const p = calendarSelectedParts();
+  const key = calendar.selected;
+  const entry = calEntry(key);
+  const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dd = new Date(p.y, p.m, p.d);
+  const bs = adToBs(p.y, p.m, p.d);
+  const rating = entry ? entry.rating : null;
+  const mark = entry ? entry.mark : null;
+
+  calEls.rateBtns.forEach((b) => {
+    const active = rating === Number(b.dataset.rate);
+    b.classList.toggle('active', active);
+  });
+  calEls.clearRate.disabled = !rating;
+  calEls.clearRate.style.opacity = rating ? '1' : '0.35';
+  calEls.clearRate.title = rating ? 'Clear rating' : 'No rating to clear';
+
+  calEls.note.value = entry && entry.note ? entry.note : '';
+  calEls.note.placeholder = 'Note for ' + weekdayNames[dd.getDay()] + ', ' + CALENDAR_US_MONTHS[p.m].slice(0, 3) + ' ' + p.d + '…';
+
+  calEls.marks.forEach((b) => b.classList.toggle('active', mark === b.dataset.mark));
+
+  calEls.hint.textContent = weekdayNames[dd.getDay()] + ', ' + CALENDAR_US_MONTHS[p.m].slice(0, 3) + ' ' + p.d + ', ' + p.y +
+    ' · ' + CALENDAR_BS_MONTHS[bs.month - 1] + ' ' + bs.day + ', ' + bs.year +
+    ' — rate your day 1–10, add a note, or color-mark it.';
+}
+
+function selectCalendarDay(key) {
+  if (!calParseKey(key)) return;
+  calendar.selected = key;
+  saveCalendarState();
+  renderCalendar();
+}
+
+function shiftCalendarMonth(step) {
+  const vy = calendar.viewYear;
+  const vm = calendar.viewMonth;
+  let ny = vy;
+  let nm = vm + step;
+  if (nm < 0) { nm = 11; ny -= 1; }
+  if (nm > 11) { nm = 0; ny += 1; }
+  if (ny < 1943 || ny > 2043) return;
+  calendar.viewYear = ny;
+  calendar.viewMonth = nm;
+  saveCalendarState();
+  renderCalendar();
+}
+
+function goCalendarToday() {
+  const t = calTodayParts();
+  calendar.viewYear = t.y;
+  calendar.viewMonth = t.m;
+  calendar.selected = calKey(t.y, t.m, t.d);
+  saveCalendarState();
+  renderCalendar();
+}
+
+function openCalendar() {
+  els.calendarOverlay.classList.add('open');
+  renderCalendar();
+}
+
+function closeCalendar() {
+  els.calendarOverlay.classList.remove('open');
+}
+
+function initCalendar() {
+  calendar = loadCalendarState();
+  calEls = {
+    overlay: els.calendarOverlay,
+    prevBtn: els.calendarPrevBtn,
+    nextBtn: els.calendarNextBtn,
+    todayBtn: els.calendarTodayBtn,
+    enTitle: els.calEnTitle,
+    bsTitle: els.calBsTitle,
+    weekdays: els.calendarWeekdays,
+    grid: els.calendarGrid,
+    rateWrap: els.calendarRateBtns,
+    rateBtns: [],
+    clearRate: els.calendarClearRateBtn,
+    note: els.calendarNoteInput,
+    marksWrap: els.calendarMarks,
+    marks: [],
+    hint: els.calendarHint,
+  };
+
+  calEls.weekdays.innerHTML = '';
+  CALENDAR_WEEKDAYS.forEach((w, i) => {
+    const el = document.createElement('span');
+    el.className = 'calendar-weekday' + (i === 0 || i === 6 ? ' weekend' : '');
+    el.textContent = w;
+    calEls.weekdays.appendChild(el);
+  });
+
+  calEls.rateWrap.innerHTML = '';
+  for (let r = 1; r <= 10; r++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'calendar-rate-btn';
+    btn.dataset.rate = String(r);
+    btn.textContent = String(r);
+    btn.title = 'Rating ' + r + (r === 1 ? ' — unproductive' : r === 10 ? ' — productive' : '');
+    btn.style.background = calRatingColor(r);
+    calEls.rateWrap.appendChild(btn);
+    calEls.rateBtns.push(btn);
+  }
+
+  calEls.marksWrap.innerHTML = '';
+  for (const [key, mk] of Object.entries(CALENDAR_MARKS)) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'calendar-mark-btn swatch';
+    btn.dataset.mark = key;
+    btn.style.background = mk.color;
+    btn.title = mk.label;
+    calEls.marksWrap.appendChild(btn);
+    calEls.marks.push(btn);
+  }
+
+  els.calendarBtn.addEventListener('click', openCalendar);
+  els.closeCalendarBtn.addEventListener('click', closeCalendar);
+  els.calendarOverlay.addEventListener('click', (e) => {
+    if (e.target === els.calendarOverlay) closeCalendar();
+  });
+  calEls.prevBtn.addEventListener('click', () => shiftCalendarMonth(-1));
+  calEls.nextBtn.addEventListener('click', () => shiftCalendarMonth(1));
+  calEls.todayBtn.addEventListener('click', goCalendarToday);
+
+  calEls.grid.addEventListener('click', (e) => {
+    const cell = e.target.closest('.calendar-day[data-key]');
+    if (cell) selectCalendarDay(cell.dataset.key);
+  });
+
+  calEls.rateBtns.forEach((b) => {
+    b.addEventListener('click', () => {
+      const r = Number(b.dataset.rate);
+      const cur = calEntry(calendar.selected);
+      if (cur && cur.rating === r) calPatch(calendar.selected, { rating: null });
+      else calPatch(calendar.selected, { rating: r });
+      renderCalendar();
+    });
+  });
+
+  calEls.clearRate.addEventListener('click', () => {
+    calPatch(calendar.selected, { rating: null });
+    renderCalendar();
+  });
+
+  calEls.note.addEventListener('input', () => {
+    const text = calEls.note.value.trim();
+    if (text) calPatch(calendar.selected, { note: text });
+    else calPatch(calendar.selected, { note: null });
+    const cell = calEls.grid.querySelector('.calendar-day[data-key="' + calendar.selected + '"]');
+    if (cell) {
+      let noteEl = cell.querySelector('.calendar-day-note');
+      if (text) {
+        if (!noteEl) {
+          noteEl = document.createElement('div');
+          noteEl.className = 'calendar-day-note';
+          cell.appendChild(noteEl);
+        }
+        noteEl.textContent = text;
+        noteEl.title = text;
+      } else if (noteEl) {
+        noteEl.remove();
+      }
+    }
+  });
+
+  calEls.marks.forEach((b) => {
+    b.addEventListener('click', () => {
+      const key = b.dataset.mark;
+      const cur = calEntry(calendar.selected);
+      if (cur && cur.mark === key) calPatch(calendar.selected, { mark: null });
+      else calPatch(calendar.selected, { mark: key });
+      renderCalendar();
+    });
+  });
+}
 
 /* ---------------- Quotes ---------------- */
 
@@ -2207,6 +2752,7 @@ function bindUi() {
     els.settingsOverlay,
     els.focusOverlay,
     els.pomodoroOverlay,
+    els.calendarOverlay,
     els.videoOverlay,
     els.musicOverlay,
   ];
@@ -2243,6 +2789,7 @@ function bindUi() {
       els.settingsOverlay.classList.remove('open');
       els.focusOverlay.classList.remove('open');
       els.pomodoroOverlay.classList.remove('open');
+      els.calendarOverlay.classList.remove('open');
       closeVideoPlayer();
       closeMusicOverlay();
       return;
@@ -2391,6 +2938,7 @@ function renderChangedCollections(skip) {
   bindSettings();
   bindUi();
   initPomodoro();
+  initCalendar();
   initVideoPlayer();
   bindMusic();
 
