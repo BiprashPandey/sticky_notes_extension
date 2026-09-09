@@ -261,6 +261,11 @@ const els = {
   calendarPrevBtn: document.getElementById('calendarPrevBtn'),
   calendarNextBtn: document.getElementById('calendarNextBtn'),
   calendarTodayBtn: document.getElementById('calendarTodayBtn'),
+  calendarGraphBtn: document.getElementById('calendarGraphBtn'),
+  calendarGraph: document.getElementById('calendarGraph'),
+  calendarGraphTitle: document.getElementById('calendarGraphTitle'),
+  calendarGraphSvg: document.getElementById('calendarGraphSvg'),
+  calendarGraphEmpty: document.getElementById('calendarGraphEmpty'),
   calEnTitle: document.getElementById('calEnTitle'),
   calBsTitle: document.getElementById('calBsTitle'),
   calendarWeekdays: document.getElementById('calendarWeekdays'),
@@ -1735,6 +1740,7 @@ osc.connect(gain).connect(pomoAudio.destination);
 
 let calendar = null;
 let calEls = null;
+let calGraphOpen = false;
 
 function calPad(n) {
   return String(n).padStart(2, '0');
@@ -1873,6 +1879,7 @@ function calendarSelectedParts() {
 
 function renderCalendar() {
   if (!calEls) return;
+  hideCalTooltip();
 
   const vy = calendar.viewYear;
   const vm = calendar.viewMonth;
@@ -1945,6 +1952,9 @@ function renderCalendar() {
       cell.appendChild(note);
     }
 
+    cell.addEventListener('mouseenter', () => showCalTooltip(cell, key));
+    cell.addEventListener('mouseleave', hideCalTooltip);
+
     frag.appendChild(cell);
   }
   const remainder = offset + daysInMonth;
@@ -1957,6 +1967,132 @@ function renderCalendar() {
   calEls.grid.innerHTML = '';
   calEls.grid.appendChild(frag);
   renderCalendarControls();
+  renderCalendarGraph();
+}
+
+function showCalTooltip(cell, key) {
+  if (!calEls || !calEls.tooltip) return;
+  const p = calParseKey(key);
+  const wrapper = calEls.grid.closest('.calendar-card') || calEls.card;
+  const cellRect = cell.getBoundingClientRect();
+  const cardRect = wrapper.getBoundingClientRect();
+  if (!isFinite(cellRect.width) || !isFinite(cardRect.width)) return;
+
+  const bs = adToBs(p.y, p.m, p.d);
+  const entry = calEntry(key);
+  const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dd = new Date(p.y, p.m, p.d);
+  const tip = calEls.tooltip;
+
+  const rating = entry ? entry.rating : null;
+  const mark = entry ? entry.mark : null;
+  const note = entry ? entry.note : '';
+
+  const ratingHtml = rating
+    ? '<span class="calendar-tooltip-rating" style="background:' + calRatingColor(rating) + '">' + rating + ' / 10</span>'
+    : '<span class="calendar-tooltip-value">—</span>';
+  const markHtml = mark
+    ? '<span class="calendar-tooltip-value"><span class="calendar-tooltip-mark-dot" style="background:' + CALENDAR_MARKS[mark].color + '"></span>&nbsp;' + CALENDAR_MARKS[mark].label + '</span>'
+    : '<span class="calendar-tooltip-value">—</span>';
+  const noteHtml = note
+    ? '<span class="calendar-tooltip-value">' + escapeHtml(note) + '</span>'
+    : '<span class="calendar-tooltip-value">—</span>';
+
+  tip.innerHTML =
+    '<div class="calendar-tooltip-date">' +
+      '<span class="calendar-tooltip-date-en">' + weekdayNames[dd.getDay()] + ', ' + CALENDAR_US_MONTHS[p.m].slice(0, 3) + ' ' + p.d + ', ' + p.y + '</span>' +
+      '<span class="calendar-tooltip-date-bs">' + CALENDAR_BS_MONTHS[bs.month - 1] + ' ' + bs.day + ', ' + bs.year + ' BS</span>' +
+    '</div>' +
+    '<div class="calendar-tooltip-row"><span class="calendar-tooltip-label">Rating</span>' + ratingHtml + '</div>' +
+    '<div class="calendar-tooltip-row"><span class="calendar-tooltip-label">Mark</span>' + markHtml + '</div>' +
+    '<div class="calendar-tooltip-note"><span class="calendar-tooltip-label">Note</span><br>' + noteHtml + '</div>';
+
+  tip.classList.add('show');
+  tip.style.visibility = 'hidden';
+  const tw = tip.offsetWidth;
+  const th = tip.offsetHeight;
+  let left = cellRect.left - cardRect.left + cellRect.width / 2 - tw / 2;
+  const maxLeft = cardRect.width - tw - 6;
+  if (left < 6) left = 6;
+  if (left > maxLeft) left = Math.max(6, maxLeft);
+  let top = cellRect.top - cardRect.top - th - 8;
+  if (top < 4) top = cellRect.top - cardRect.top + cellRect.height + 8;
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+  tip.style.visibility = 'visible';
+}
+
+function hideCalTooltip() {
+  if (!calEls || !calEls.tooltip) return;
+  calEls.tooltip.classList.remove('show');
+}
+
+function renderCalendarGraph() {
+  if (!calEls) return;
+  const vy = calendar.viewYear;
+  const vm = calendar.viewMonth;
+  const daysInMonth = new Date(vy, vm + 1, 0).getDate();
+  const rated = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const e = calEntry(calKey(vy, vm, d));
+    if (e && e.rating) rated.push({ d: d, rating: e.rating });
+  }
+
+  calEls.graphTitle.textContent = 'Rating trend · ' + CALENDAR_US_MONTHS[vm] + ' ' + vy;
+
+  if (!calGraphOpen) return;
+  if (!rated.length) {
+    calEls.graphSvg.style.display = 'none';
+    calEls.graphEmpty.classList.add('visible');
+    return;
+  }
+  calEls.graphSvg.style.display = 'block';
+  calEls.graphEmpty.classList.remove('visible');
+
+  const W = 600;
+  const H = 220;
+  const padL = 26;
+  const padR = 10;
+  const padT = 12;
+  const padB = 24;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const x = (d) => padL + ((d - 1) / (daysInMonth - 1)) * plotW;
+  const y = (r) => padT + ((10 - r) / 9) * plotH;
+
+  const segs = [];
+  let cur = [];
+  for (let i = 0; i < rated.length; i++) {
+    if (cur.length && rated[i].d !== cur[cur.length - 1].d + 1) {
+      segs.push(cur);
+      cur = [];
+    }
+    cur.push(rated[i]);
+  }
+  if (cur.length) segs.push(cur);
+
+  let html = '';
+  for (let r = 1; r <= 10; r++) {
+    const yy = y(r);
+    html += '<line class="calendar-graph-gridline" x1="' + padL + '" y1="' + yy + '" x2="' + (W - padR) + '" y2="' + yy + '"/>';
+    html += '<text class="calendar-graph-axis-label" x="' + (padL - 4) + '" y="' + (yy + 3) + '" text-anchor="end">' + r + '</text>';
+  }
+  const xLabels = new Set([1]);
+  for (let d = 5; d < daysInMonth; d += 5) xLabels.add(d);
+  xLabels.add(daysInMonth);
+  for (const d of xLabels) {
+    const xx = x(d);
+    html += '<text class="calendar-graph-axis-label" x="' + xx + '" y="' + (H - padB + 15) + '" text-anchor="middle" font-size="8.5">' + d + '</text>';
+  }
+  for (const seg of segs) {
+    if (seg.length < 2) continue;
+    const pts = seg.map((r) => x(r.d) + ',' + y(r.rating)).join(' ');
+    html += '<polyline class="calendar-graph-line" points="' + pts + '"/>';
+  }
+  for (const r of rated) {
+    html += '<circle class="calendar-graph-point" cx="' + x(r.d) + '" cy="' + y(r.rating) + '" r="3.5" fill="' + calRatingColor(r.rating) + '"/>';
+  }
+  calEls.graphSvg.innerHTML = html;
 }
 
 function renderCalendarControls() {
@@ -2032,9 +2168,15 @@ function initCalendar() {
   calendar = loadCalendarState();
   calEls = {
     overlay: els.calendarOverlay,
+    card: els.calendarOverlay.querySelector('.calendar-card'),
     prevBtn: els.calendarPrevBtn,
     nextBtn: els.calendarNextBtn,
     todayBtn: els.calendarTodayBtn,
+    graphBtn: els.calendarGraphBtn,
+    graph: els.calendarGraph,
+    graphTitle: els.calendarGraphTitle,
+    graphSvg: els.calendarGraphSvg,
+    graphEmpty: els.calendarGraphEmpty,
     enTitle: els.calEnTitle,
     bsTitle: els.calBsTitle,
     weekdays: els.calendarWeekdays,
@@ -2046,7 +2188,13 @@ function initCalendar() {
     marksWrap: els.calendarMarks,
     marks: [],
     hint: els.calendarHint,
+    tooltip: null,
   };
+
+  calEls.tooltip = document.createElement('div');
+  calEls.tooltip.className = 'calendar-tooltip';
+  calEls.card.appendChild(calEls.tooltip);
+  calEls.card.addEventListener('scroll', hideCalTooltip);
 
   calEls.weekdays.innerHTML = '';
   CALENDAR_WEEKDAYS.forEach((w, i) => {
@@ -2089,6 +2237,13 @@ function initCalendar() {
   calEls.prevBtn.addEventListener('click', () => shiftCalendarMonth(-1));
   calEls.nextBtn.addEventListener('click', () => shiftCalendarMonth(1));
   calEls.todayBtn.addEventListener('click', goCalendarToday);
+  calEls.graphBtn.addEventListener('click', () => {
+    calGraphOpen = !calGraphOpen;
+    calEls.graph.classList.toggle('open', calGraphOpen);
+    calEls.graphBtn.textContent = calGraphOpen ? '📉 Hide graph' : '📈 Graph';
+    calEls.graphBtn.title = calGraphOpen ? 'Hide rating trend graph' : 'Show rating trend graph';
+    if (calGraphOpen) renderCalendarGraph();
+  });
 
   calEls.grid.addEventListener('click', (e) => {
     const cell = e.target.closest('.calendar-day[data-key]');

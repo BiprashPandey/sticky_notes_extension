@@ -194,10 +194,26 @@
       </div>
       <div class="calendar-today-holder">
         <button type="button" class="calendar-today-btn" id="calendarTodayBtn" title="Jump to today">Today</button>
+        <button type="button" class="calendar-today-btn" id="calendarGraphBtn" title="Show rating trend graph">📈 Graph</button>
       </div>
 
       <div class="calendar-weekdays" id="calendarWeekdays"></div>
       <div class="calendar-grid" id="calendarGrid"></div>
+
+      <div class="calendar-graph" id="calendarGraph">
+        <div class="calendar-graph-head">
+          <span class="calendar-graph-title" id="calendarGraphTitle"></span>
+          <span class="calendar-graph-legend">
+            <span class="calendar-graph-legend-label">1</span>
+            <span class="calendar-graph-legend-bar"></span>
+            <span class="calendar-graph-legend-label">10</span>
+          </span>
+        </div>
+        <div class="calendar-graph-body">
+          <svg class="calendar-graph-svg" id="calendarGraphSvg" viewBox="0 0 600 220" preserveAspectRatio="xMidYMid meet"></svg>
+          <p class="calendar-graph-empty" id="calendarGraphEmpty">No ratings tracked this month yet.</p>
+        </div>
+      </div>
 
       <div class="calendar-rate" id="calendarRateRow">
         <span class="calendar-rate-label">Rate</span>
