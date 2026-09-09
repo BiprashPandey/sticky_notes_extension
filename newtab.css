@@ -2506,143 +2506,94 @@ body.power-hidden .music-mini {
   border-color: #fff;
 }
 
-/* Rating fill — 1 (red) → 10 (bright green). Applied inline on the day box. */
+/* ---------- Calendar popup editor (hover/click a day) ---------- */
 
-.calendar-rate {
+.calendar-tooltip-rate,
+.calendar-tooltip-marks {
+  margin-top: 9px;
+}
+
+.calendar-tooltip-rate-btns {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(4px, 0.5vw, 8px);
+  gap: 3px;
   flex-wrap: wrap;
+  margin-top: 4px;
 }
 
-.calendar-rate-label {
-  color: var(--text-dim);
-  font-size: clamp(10px, 0.75vw, 13px);
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.calendar-rate-btns {
-  display: flex;
-  gap: clamp(3px, 0.3vw, 5px);
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.calendar-rate-btn {
-  width: clamp(26px, 2vw, 32px);
-  height: clamp(26px, 2vw, 32px);
-  border-radius: 8px;
-  border: 1.5px solid var(--glass-border);
+.calendar-tooltip-rate-btn {
+  width: 19px;
+  height: 19px;
+  border-radius: 5px;
+  border: 1px solid rgba(15, 23, 42, 0.4);
   background: rgba(255, 255, 255, 0.06);
   color: #0b1220;
   font-family: var(--ui-font);
-  font-size: clamp(10px, 0.75vw, 12.5px);
+  font-size: 10px;
   font-weight: 700;
+  line-height: 1;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
+  padding: 0;
+  transition: transform 0.1s ease;
 }
 
-.calendar-rate-btn:hover {
-  transform: scale(1.08);
-  border-color: var(--glass-border);
+.calendar-tooltip-rate-btn:hover {
+  transform: scale(1.15);
 }
 
-.calendar-rate-btn.active {
-  border-color: #fff;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+.calendar-tooltip-rate-btn.active {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
 }
 
-.calendar-clear {
-  border: none;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--text-dim);
-  font-size: clamp(11px, 0.8vw, 14px);
-  width: clamp(24px, 1.9vw, 30px);
-  height: clamp(24px, 1.9vw, 30px);
+.calendar-tooltip-mark-btns {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+
+.calendar-tooltip-mark-btn {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 1px solid rgba(15, 23, 42, 0.35);
   cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: background 0.15s ease, color 0.15s ease;
+  padding: 0;
+  transition: transform 0.1s ease;
 }
 
-.calendar-clear:hover {
-  background: rgba(255, 100, 100, 0.25);
-  color: #fff;
+.calendar-tooltip-mark-btn:hover {
+  transform: scale(1.15);
 }
 
-.calendar-note-input {
+.calendar-tooltip-mark-btn.active {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
+.calendar-tooltip-note-input {
   width: 100%;
+  box-sizing: border-box;
+  margin-top: 10px;
   border: 1px solid var(--glass-border);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
   color: var(--text);
   font-family: var(--ui-font);
-  font-size: clamp(11px, 0.8vw, 14px);
-  padding: clamp(7px, 0.9vh, 11px) clamp(10px, 0.9vw, 14px);
+  font-size: 11px;
+  padding: 6px 9px;
   outline: none;
   transition: border-color 0.15s ease;
-  box-sizing: border-box;
 }
 
-.calendar-note-input::placeholder {
+.calendar-tooltip-note-input::placeholder {
   color: var(--text-dim);
 }
 
-.calendar-note-input:focus {
+.calendar-tooltip-note-input:focus {
   border-color: var(--accent);
-}
-
-.calendar-marks {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(5px, 0.6vw, 9px);
-  flex-wrap: wrap;
-}
-
-.calendar-mark-label {
-  color: var(--text-dim);
-  font-size: clamp(10px, 0.75vw, 13px);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.calendar-mark-btn {
-  width: clamp(22px, 1.7vw, 26px);
-  height: clamp(22px, 1.7vw, 26px);
-  border-radius: 50%;
-  border: 1.5px solid transparent;
-  cursor: pointer;
-  transition: transform 0.1s ease, border-color 0.15s ease;
-  padding: 0;
-}
-
-.calendar-mark-btn.swatch {
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-.calendar-mark-btn:hover {
-  transform: scale(1.12);
-}
-
-.calendar-mark-btn.active {
-  border-color: #fff;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
-}
-
-.calendar-hint {
-  margin: 0;
-  color: var(--text-dim);
-  font-size: clamp(9.5px, 0.7vw, 12.5px);
-  text-align: center;
-  line-height: 1.5;
 }
 
 /* ---------- Calendar rating trend graph ---------- */
@@ -2742,98 +2693,95 @@ body.power-hidden .music-mini {
   stroke-width: 1.25;
 }
 
-/* ---------- Calendar hover tooltip ---------- */
+.calendar-graph-today {
+  stroke: rgba(148, 163, 184, 0.45);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.calendar-graph-today-label {
+  fill: rgba(248, 250, 252, 0.7);
+  font-size: 8px;
+  font-family: var(--ui-font);
+}
+
+/* ---------- Calendar popup editor ---------- */
 
 .calendar-tooltip {
   position: absolute;
   z-index: 12;
   display: none;
-  min-width: clamp(180px, 20vw, 240px);
-  max-width: min(46vw, 280px);
+  width: 238px;
   padding: clamp(8px, 1vh, 12px) clamp(10px, 1vw, 14px);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(10, 16, 32, 0.96);
+  background: rgba(10, 16, 32, 0.97);
   box-shadow: 0 12px 30px rgba(2, 6, 23, 0.55);
   font-family: var(--ui-font);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .calendar-tooltip.show {
   display: block;
 }
 
-.calendar-tooltip-date {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+.calendar-tooltip.pinned {
+  border-color: var(--accent);
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.55), 0 0 0 1px var(--accent);
+}
+
+.calendar-tooltip-head {
+  position: relative;
   margin-bottom: clamp(4px, 0.5vh, 7px);
   padding-bottom: clamp(4px, 0.5vh, 7px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.calendar-tooltip-date {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
 .calendar-tooltip-date-en {
   color: var(--text);
-  font-size: clamp(11px, 0.85vw, 14px);
+  font-size: clamp(11px, 0.85vw, 13.5px);
   font-weight: 700;
 }
 
 .calendar-tooltip-date-bs {
   color: var(--text-dim);
-  font-size: clamp(9px, 0.7vw, 12px);
+  font-size: clamp(9px, 0.7vw, 11.5px);
 }
 
-.calendar-tooltip-row {
-  display: flex;
-  align-items: center;
-  gap: clamp(6px, 0.6vw, 10px);
-  padding: clamp(2px, 0.25vh, 3px) 0;
-  font-size: clamp(9.5px, 0.72vw, 12px);
+.calendar-tooltip-close {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.calendar-tooltip-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
 }
 
 .calendar-tooltip-label {
-  flex: 0 0 auto;
   color: var(--text-dim);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  font-size: clamp(8px, 0.62vw, 10.5px);
-}
-
-.calendar-tooltip-value {
-  color: var(--text);
-  overflow-wrap: break-word;
-  min-width: 0;
-}
-
-.calendar-tooltip-rating {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  font-weight: 700;
-  color: #0b1220;
-}
-
-.calendar-tooltip-mark-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
-}
-
-.calendar-tooltip-note {
-  margin-top: clamp(4px, 0.5vh, 7px);
-  padding-top: clamp(4px, 0.5vh, 7px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text);
-  font-size: clamp(9.5px, 0.72vw, 12px);
-  line-height: 1.45;
-  max-height: 60px;
-  overflow-y: auto;
-  overflow-wrap: break-word;
+  font-size: clamp(8px, 0.62vw, 10px);
 }
 
 @media (max-width: 640px) {

@@ -270,11 +270,6 @@ const els = {
   calBsTitle: document.getElementById('calBsTitle'),
   calendarWeekdays: document.getElementById('calendarWeekdays'),
   calendarGrid: document.getElementById('calendarGrid'),
-  calendarRateBtns: document.getElementById('calendarRateBtns'),
-  calendarClearRateBtn: document.getElementById('calendarClearRateBtn'),
-  calendarNoteInput: document.getElementById('calendarNoteInput'),
-  calendarMarks: document.getElementById('calendarMarks'),
-  calendarHint: document.getElementById('calendarHint'),
   focusBtn: document.getElementById('focusBtn'),
   focusLed: document.getElementById('focusBtn').querySelector('.focus-led'),
   focusOverlay: document.getElementById('focusOverlay'),
@@ -1741,6 +1736,11 @@ osc.connect(gain).connect(pomoAudio.destination);
 let calendar = null;
 let calEls = null;
 let calGraphOpen = false;
+let calTipKey = null;
+let calTipPinned = false;
+let calTipHideTimer = null;
+const CAL_TIP_BACK_DAYS = 20;
+const CAL_TIP_FWD_DAYS = 5;
 
 function calPad(n) {
   return String(n).padStart(2, '0');
@@ -1879,6 +1879,8 @@ function calendarSelectedParts() {
 
 function renderCalendar() {
   if (!calEls) return;
+  const keepKey = calTipPinned && calTipKey ? calTipKey : null;
+  calTipPinned = keepKey ? true : false;
   hideCalTooltip();
 
   const vy = calendar.viewYear;
@@ -1952,8 +1954,8 @@ function renderCalendar() {
       cell.appendChild(note);
     }
 
-    cell.addEventListener('mouseenter', () => showCalTooltip(cell, key));
-    cell.addEventListener('mouseleave', hideCalTooltip);
+    cell.addEventListener('mouseenter', () => calTipShowFromHover(cell, key));
+    cell.addEventListener('mouseleave', scheduleCalTipHide);
 
     frag.appendChild(cell);
   }
@@ -1966,46 +1968,47 @@ function renderCalendar() {
 
   calEls.grid.innerHTML = '';
   calEls.grid.appendChild(frag);
-  renderCalendarControls();
   renderCalendarGraph();
+  if (keepKey) {
+    const cell = calEls.grid.querySelector('.calendar-day[data-key="' + keepKey + '"]');
+    if (cell) calTipSync(keepKey, true, cell);
+    else hideCalTooltip();
+  }
 }
 
-function showCalTooltip(cell, key) {
+function calTipSync(key, pinned, cell) {
   if (!calEls || !calEls.tooltip) return;
   const p = calParseKey(key);
-  const wrapper = calEls.grid.closest('.calendar-card') || calEls.card;
-  const cellRect = cell.getBoundingClientRect();
-  const cardRect = wrapper.getBoundingClientRect();
-  if (!isFinite(cellRect.width) || !isFinite(cardRect.width)) return;
-
-  const bs = adToBs(p.y, p.m, p.d);
+  if (!p) return;
+  calTipKey = key;
+  calTipPinned = pinned;
   const entry = calEntry(key);
+  const bs = adToBs(p.y, p.m, p.d);
   const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const dd = new Date(p.y, p.m, p.d);
-  const tip = calEls.tooltip;
-
   const rating = entry ? entry.rating : null;
   const mark = entry ? entry.mark : null;
   const note = entry ? entry.note : '';
 
-  const ratingHtml = rating
-    ? '<span class="calendar-tooltip-rating" style="background:' + calRatingColor(rating) + '">' + rating + ' / 10</span>'
-    : '<span class="calendar-tooltip-value">—</span>';
-  const markHtml = mark
-    ? '<span class="calendar-tooltip-value"><span class="calendar-tooltip-mark-dot" style="background:' + CALENDAR_MARKS[mark].color + '"></span>&nbsp;' + CALENDAR_MARKS[mark].label + '</span>'
-    : '<span class="calendar-tooltip-value">—</span>';
-  const noteHtml = note
-    ? '<span class="calendar-tooltip-value">' + escapeHtml(note) + '</span>'
-    : '<span class="calendar-tooltip-value">—</span>';
+  calEls.tip.en.textContent = weekdayNames[dd.getDay()] + ', ' + CALENDAR_US_MONTHS[p.m].slice(0, 3) + ' ' + p.d + ', ' + p.y;
+  calEls.tip.bs.textContent = CALENDAR_BS_MONTHS[bs.month - 1] + ' ' + bs.day + ', ' + bs.year + ' BS';
+  calEls.tip.rateBtns.forEach((b) => b.classList.toggle('active', rating === Number(b.dataset.rate)));
+  calEls.tip.markBtns.forEach((b) => b.classList.toggle('active', mark === b.dataset.mark));
+  calEls.tip.note.value = note;
+  calEls.tip.root.classList.toggle('pinned', pinned);
+  positionCalTip(cell);
+}
 
-  tip.innerHTML =
-    '<div class="calendar-tooltip-date">' +
-      '<span class="calendar-tooltip-date-en">' + weekdayNames[dd.getDay()] + ', ' + CALENDAR_US_MONTHS[p.m].slice(0, 3) + ' ' + p.d + ', ' + p.y + '</span>' +
-      '<span class="calendar-tooltip-date-bs">' + CALENDAR_BS_MONTHS[bs.month - 1] + ' ' + bs.day + ', ' + bs.year + ' BS</span>' +
-    '</div>' +
-    '<div class="calendar-tooltip-row"><span class="calendar-tooltip-label">Rating</span>' + ratingHtml + '</div>' +
-    '<div class="calendar-tooltip-row"><span class="calendar-tooltip-label">Mark</span>' + markHtml + '</div>' +
-    '<div class="calendar-tooltip-note"><span class="calendar-tooltip-label">Note</span><br>' + noteHtml + '</div>';
+function positionCalTip(cell) {
+  const tip = calEls.tooltip;
+  if (!cell) {
+    hideCalTooltip();
+    return;
+  }
+  clearTimeout(calTipHideTimer);
+  const cellRect = cell.getBoundingClientRect();
+  const cardRect = calEls.card.getBoundingClientRect();
+  if (!isFinite(cellRect.width) || !isFinite(cardRect.width)) return;
 
   tip.classList.add('show');
   tip.style.visibility = 'hidden';
@@ -2022,26 +2025,62 @@ function showCalTooltip(cell, key) {
   tip.style.visibility = 'visible';
 }
 
+function calTipShowFromHover(cell, key) {
+  if (calTipPinned && calTipKey !== key) return;
+  clearTimeout(calTipHideTimer);
+  calTipSync(key, calTipPinned, cell);
+}
+
+function scheduleCalTipHide() {
+  if (calTipPinned) return;
+  clearTimeout(calTipHideTimer);
+  calTipHideTimer = setTimeout(() => {
+    if (calEls && calEls.tooltip) calEls.tooltip.classList.remove('show');
+  }, 180);
+}
+
 function hideCalTooltip() {
-  if (!calEls || !calEls.tooltip) return;
-  calEls.tooltip.classList.remove('show');
+  clearTimeout(calTipHideTimer);
+  if (calEls && calEls.tooltip) calEls.tooltip.classList.remove('show');
+}
+
+function calTipClose() {
+  calTipKey = null;
+  calTipPinned = false;
+  hideCalTooltip();
 }
 
 function renderCalendarGraph() {
   if (!calEls) return;
-  const vy = calendar.viewYear;
-  const vm = calendar.viewMonth;
-  const daysInMonth = new Date(vy, vm + 1, 0).getDate();
-  const rated = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    const e = calEntry(calKey(vy, vm, d));
-    if (e && e.rating) rated.push({ d: d, rating: e.rating });
-  }
 
-  calEls.graphTitle.textContent = 'Rating trend · ' + CALENDAR_US_MONTHS[vm] + ' ' + vy;
+  const t = calTodayParts();
+  const days = [];
+  const start = new Date(t.y, t.m, t.d - CAL_TIP_BACK_DAYS);
+  const end = new Date(t.y, t.m, t.d + CAL_TIP_FWD_DAYS);
+  const dt = new Date(start);
+  while (dt <= end) {
+    const yy = dt.getFullYear();
+    const mm = dt.getMonth();
+    const dd = dt.getDate();
+    days.push({ y: yy, m: mm, d: dd, key: calKey(yy, mm, dd) });
+    dt.setDate(dt.getDate() + 1);
+  }
+  const fmt = (day) => CALENDAR_US_MONTHS[day.m].slice(0, 3) + ' ' + day.d + ', ' + day.y;
+  const last = days[days.length - 1];
+  calEls.graphTitle.textContent = 'Rating trend · ' + fmt(days[0]) + ' – ' + fmt(last);
 
   if (!calGraphOpen) return;
-  if (!rated.length) {
+
+  const idxByKey = {};
+  days.forEach((day, i) => { idxByKey[day.key] = i; });
+
+  const ratedByKey = {};
+  for (const day of days) {
+    const e = calEntry(day.key);
+    if (e && e.rating) ratedByKey[day.key] = e.rating;
+  }
+
+  if (Object.keys(ratedByKey).length === 0) {
     calEls.graphSvg.style.display = 'none';
     calEls.graphEmpty.classList.add('visible');
     return;
@@ -2051,85 +2090,73 @@ function renderCalendarGraph() {
 
   const W = 600;
   const H = 220;
-  const padL = 26;
+  const padL = 40;
   const padR = 10;
   const padT = 12;
   const padB = 24;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
-  const x = (d) => padL + ((d - 1) / (daysInMonth - 1)) * plotW;
+  const n = days.length;
+  const x = (idx) => padL + (idx / (n - 1)) * plotW;
   const y = (r) => padT + ((10 - r) / 9) * plotH;
-
-  const segs = [];
-  let cur = [];
-  for (let i = 0; i < rated.length; i++) {
-    if (cur.length && rated[i].d !== cur[cur.length - 1].d + 1) {
-      segs.push(cur);
-      cur = [];
-    }
-    cur.push(rated[i]);
-  }
-  if (cur.length) segs.push(cur);
 
   let html = '';
   for (let r = 1; r <= 10; r++) {
     const yy = y(r);
     html += '<line class="calendar-graph-gridline" x1="' + padL + '" y1="' + yy + '" x2="' + (W - padR) + '" y2="' + yy + '"/>';
-    html += '<text class="calendar-graph-axis-label" x="' + (padL - 4) + '" y="' + (yy + 3) + '" text-anchor="end">' + r + '</text>';
+    html += '<text class="calendar-graph-axis-label" x="' + (padL - 5) + '" y="' + (yy + 3) + '" text-anchor="end">' + r + '</text>';
   }
-  const xLabels = new Set([1]);
-  for (let d = 5; d < daysInMonth; d += 5) xLabels.add(d);
-  xLabels.add(daysInMonth);
-  for (const d of xLabels) {
-    const xx = x(d);
-    html += '<text class="calendar-graph-axis-label" x="' + xx + '" y="' + (H - padB + 15) + '" text-anchor="middle" font-size="8.5">' + d + '</text>';
+  const xStep = Math.max(1, Math.round((n - 1) / 5));
+  const xIdx = new Set([0]);
+  for (let i = xStep; i < n - 1; i += xStep) xIdx.add(i);
+  xIdx.add(n - 1);
+  for (const i of xIdx) {
+    const day = days[i];
+    html += '<text class="calendar-graph-axis-label" x="' + x(i) + '" y="' + (H - padB + 15) + '" text-anchor="middle" font-size="8.5">' +
+      CALENDAR_US_MONTHS[day.m].slice(0, 3) + ' ' + day.d + '</text>';
   }
+
+  const todayIdx = idxByKey[calKey(t.y, t.m, t.d)];
+  if (todayIdx != null) {
+    const tx = x(todayIdx);
+    html += '<line class="calendar-graph-today" x1="' + tx + '" y1="' + padT + '" x2="' + tx + '" y2="' + (H - padB) + '"/>';
+    html += '<text class="calendar-graph-today-label" x="' + tx + '" y="' + (padT - 3) + '" text-anchor="middle">today</text>';
+  }
+
+  const ratedKeys = Object.keys(ratedByKey).sort((a, b) => idxByKey[a] - idxByKey[b]);
+  const rated = ratedKeys.map((k) => ({ key: k, rating: ratedByKey[k], idx: idxByKey[k] }));
+
+  const segs = [];
+  let cur = [];
+  for (const r of rated) {
+    if (cur.length && r.idx !== cur[cur.length - 1].idx + 1) {
+      segs.push(cur);
+      cur = [];
+    }
+    cur.push(r);
+  }
+  if (cur.length) segs.push(cur);
+
   for (const seg of segs) {
     if (seg.length < 2) continue;
-    const pts = seg.map((r) => x(r.d) + ',' + y(r.rating)).join(' ');
+    const pts = seg.map((r) => x(r.idx) + ',' + y(r.rating)).join(' ');
     html += '<polyline class="calendar-graph-line" points="' + pts + '"/>';
   }
   for (const r of rated) {
-    html += '<circle class="calendar-graph-point" cx="' + x(r.d) + '" cy="' + y(r.rating) + '" r="3.5" fill="' + calRatingColor(r.rating) + '"/>';
+    html += '<circle class="calendar-graph-point" cx="' + x(r.idx) + '" cy="' + y(r.rating) + '" r="3.5" fill="' + calRatingColor(r.rating) + '"/>';
   }
   calEls.graphSvg.innerHTML = html;
-}
-
-function renderCalendarControls() {
-  if (!calEls) return;
-
-  const p = calendarSelectedParts();
-  const key = calendar.selected;
-  const entry = calEntry(key);
-  const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const dd = new Date(p.y, p.m, p.d);
-  const bs = adToBs(p.y, p.m, p.d);
-  const rating = entry ? entry.rating : null;
-  const mark = entry ? entry.mark : null;
-
-  calEls.rateBtns.forEach((b) => {
-    const active = rating === Number(b.dataset.rate);
-    b.classList.toggle('active', active);
-  });
-  calEls.clearRate.disabled = !rating;
-  calEls.clearRate.style.opacity = rating ? '1' : '0.35';
-  calEls.clearRate.title = rating ? 'Clear rating' : 'No rating to clear';
-
-  calEls.note.value = entry && entry.note ? entry.note : '';
-  calEls.note.placeholder = 'Note for ' + weekdayNames[dd.getDay()] + ', ' + CALENDAR_US_MONTHS[p.m].slice(0, 3) + ' ' + p.d + '…';
-
-  calEls.marks.forEach((b) => b.classList.toggle('active', mark === b.dataset.mark));
-
-  calEls.hint.textContent = weekdayNames[dd.getDay()] + ', ' + CALENDAR_US_MONTHS[p.m].slice(0, 3) + ' ' + p.d + ', ' + p.y +
-    ' · ' + CALENDAR_BS_MONTHS[bs.month - 1] + ' ' + bs.day + ', ' + bs.year +
-    ' — rate your day 1–10, add a note, or color-mark it.';
 }
 
 function selectCalendarDay(key) {
   if (!calParseKey(key)) return;
   calendar.selected = key;
+  calTipKey = null;
+  calTipPinned = false;
   saveCalendarState();
   renderCalendar();
+  const cell = calEls.grid.querySelector('.calendar-day[data-key="' + key + '"]');
+  calTipSync(key, true, cell);
 }
 
 function shiftCalendarMonth(step) {
@@ -2142,6 +2169,7 @@ function shiftCalendarMonth(step) {
   if (ny < 1943 || ny > 2043) return;
   calendar.viewYear = ny;
   calendar.viewMonth = nm;
+  calTipClose();
   saveCalendarState();
   renderCalendar();
 }
@@ -2151,16 +2179,19 @@ function goCalendarToday() {
   calendar.viewYear = t.y;
   calendar.viewMonth = t.m;
   calendar.selected = calKey(t.y, t.m, t.d);
+  calTipClose();
   saveCalendarState();
   renderCalendar();
 }
 
 function openCalendar() {
   els.calendarOverlay.classList.add('open');
+  calendar = loadCalendarState();
   renderCalendar();
 }
 
 function closeCalendar() {
+  calTipClose();
   els.calendarOverlay.classList.remove('open');
 }
 
@@ -2181,20 +2212,71 @@ function initCalendar() {
     bsTitle: els.calBsTitle,
     weekdays: els.calendarWeekdays,
     grid: els.calendarGrid,
-    rateWrap: els.calendarRateBtns,
-    rateBtns: [],
-    clearRate: els.calendarClearRateBtn,
-    note: els.calendarNoteInput,
-    marksWrap: els.calendarMarks,
-    marks: [],
-    hint: els.calendarHint,
     tooltip: null,
+    tip: null,
   };
 
-  calEls.tooltip = document.createElement('div');
-  calEls.tooltip.className = 'calendar-tooltip';
-  calEls.card.appendChild(calEls.tooltip);
-  calEls.card.addEventListener('scroll', hideCalTooltip);
+  const tip = document.createElement('div');
+  tip.className = 'calendar-tooltip';
+  tip.innerHTML =
+    '<div class="calendar-tooltip-head">' +
+      '<div class="calendar-tooltip-date">' +
+        '<span class="calendar-tooltip-date-en"></span>' +
+        '<span class="calendar-tooltip-date-bs"></span>' +
+      '</div>' +
+      '<button type="button" class="calendar-tooltip-close" title="Close">✕</button>' +
+    '</div>' +
+    '<div class="calendar-tooltip-rate">' +
+      '<span class="calendar-tooltip-label">Rate your day</span>' +
+      '<div class="calendar-tooltip-rate-btns"></div>' +
+    '</div>' +
+    '<div class="calendar-tooltip-marks">' +
+      '<span class="calendar-tooltip-label">Mark date</span>' +
+      '<div class="calendar-tooltip-mark-btns"></div>' +
+    '</div>' +
+    '<input type="text" class="calendar-tooltip-note-input" maxlength="200" placeholder="Add a note…">';
+  calEls.card.appendChild(tip);
+  calEls.tooltip = tip;
+
+  const rateWrap = tip.querySelector('.calendar-tooltip-rate-btns');
+  const markWrap = tip.querySelector('.calendar-tooltip-mark-btns');
+  const noteInput = tip.querySelector('.calendar-tooltip-note-input');
+  const closeBtn = tip.querySelector('.calendar-tooltip-close');
+
+  const rateBtns = [];
+  for (let r = 1; r <= 10; r++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'calendar-tooltip-rate-btn';
+    btn.dataset.rate = String(r);
+    btn.textContent = String(r);
+    btn.title = 'Rating ' + r + (r === 1 ? ' — unproductive' : r === 10 ? ' — productive' : '');
+    btn.style.background = calRatingColor(r);
+    rateWrap.appendChild(btn);
+    rateBtns.push(btn);
+  }
+
+  const markBtns = [];
+  for (const [key, mk] of Object.entries(CALENDAR_MARKS)) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'calendar-tooltip-mark-btn swatch';
+    btn.dataset.mark = key;
+    btn.style.background = mk.color;
+    btn.title = mk.label;
+    markWrap.appendChild(btn);
+    markBtns.push(btn);
+  }
+
+  calEls.tip = {
+    root: tip,
+    en: tip.querySelector('.calendar-tooltip-date-en'),
+    bs: tip.querySelector('.calendar-tooltip-date-bs'),
+    close: closeBtn,
+    rateBtns: rateBtns,
+    markBtns: markBtns,
+    note: noteInput,
+  };
 
   calEls.weekdays.innerHTML = '';
   CALENDAR_WEEKDAYS.forEach((w, i) => {
@@ -2204,72 +2286,25 @@ function initCalendar() {
     calEls.weekdays.appendChild(el);
   });
 
-  calEls.rateWrap.innerHTML = '';
-  for (let r = 1; r <= 10; r++) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'calendar-rate-btn';
-    btn.dataset.rate = String(r);
-    btn.textContent = String(r);
-    btn.title = 'Rating ' + r + (r === 1 ? ' — unproductive' : r === 10 ? ' — productive' : '');
-    btn.style.background = calRatingColor(r);
-    calEls.rateWrap.appendChild(btn);
-    calEls.rateBtns.push(btn);
-  }
-
-  calEls.marksWrap.innerHTML = '';
-  for (const [key, mk] of Object.entries(CALENDAR_MARKS)) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'calendar-mark-btn swatch';
-    btn.dataset.mark = key;
-    btn.style.background = mk.color;
-    btn.title = mk.label;
-    calEls.marksWrap.appendChild(btn);
-    calEls.marks.push(btn);
-  }
-
-  els.calendarBtn.addEventListener('click', openCalendar);
-  els.closeCalendarBtn.addEventListener('click', closeCalendar);
-  els.calendarOverlay.addEventListener('click', (e) => {
-    if (e.target === els.calendarOverlay) closeCalendar();
+  calEls.card.addEventListener('scroll', () => {
+    if (!calTipPinned) hideCalTooltip();
   });
-  calEls.prevBtn.addEventListener('click', () => shiftCalendarMonth(-1));
-  calEls.nextBtn.addEventListener('click', () => shiftCalendarMonth(1));
-  calEls.todayBtn.addEventListener('click', goCalendarToday);
-  calEls.graphBtn.addEventListener('click', () => {
-    calGraphOpen = !calGraphOpen;
-    calEls.graph.classList.toggle('open', calGraphOpen);
-    calEls.graphBtn.textContent = calGraphOpen ? '📉 Hide graph' : '📈 Graph';
-    calEls.graphBtn.title = calGraphOpen ? 'Hide rating trend graph' : 'Show rating trend graph';
-    if (calGraphOpen) renderCalendarGraph();
+  tip.addEventListener('mouseenter', () => clearTimeout(calTipHideTimer));
+  tip.addEventListener('mouseleave', scheduleCalTipHide);
+  tip.addEventListener('pointerdown', () => {
+    if (calTipKey) {
+      calTipPinned = true;
+      tip.classList.add('pinned');
+    }
   });
+  closeBtn.addEventListener('click', calTipClose);
 
-  calEls.grid.addEventListener('click', (e) => {
-    const cell = e.target.closest('.calendar-day[data-key]');
-    if (cell) selectCalendarDay(cell.dataset.key);
-  });
-
-  calEls.rateBtns.forEach((b) => {
-    b.addEventListener('click', () => {
-      const r = Number(b.dataset.rate);
-      const cur = calEntry(calendar.selected);
-      if (cur && cur.rating === r) calPatch(calendar.selected, { rating: null });
-      else calPatch(calendar.selected, { rating: r });
-      renderCalendar();
-    });
-  });
-
-  calEls.clearRate.addEventListener('click', () => {
-    calPatch(calendar.selected, { rating: null });
-    renderCalendar();
-  });
-
-  calEls.note.addEventListener('input', () => {
-    const text = calEls.note.value.trim();
-    if (text) calPatch(calendar.selected, { note: text });
-    else calPatch(calendar.selected, { note: null });
-    const cell = calEls.grid.querySelector('.calendar-day[data-key="' + calendar.selected + '"]');
+  noteInput.addEventListener('input', () => {
+    if (!calTipKey) return;
+    const text = noteInput.value.trim();
+    if (text) calPatch(calTipKey, { note: text });
+    else calPatch(calTipKey, { note: null });
+    const cell = calEls.grid.querySelector('.calendar-day[data-key="' + calTipKey + '"]');
     if (cell) {
       let noteEl = cell.querySelector('.calendar-day-note');
       if (text) {
@@ -2286,14 +2321,53 @@ function initCalendar() {
     }
   });
 
-  calEls.marks.forEach((b) => {
+  rateBtns.forEach((b) => {
     b.addEventListener('click', () => {
-      const key = b.dataset.mark;
-      const cur = calEntry(calendar.selected);
-      if (cur && cur.mark === key) calPatch(calendar.selected, { mark: null });
-      else calPatch(calendar.selected, { mark: key });
+      if (!calTipKey) return;
+      const r = Number(b.dataset.rate);
+      const cur = calEntry(calTipKey);
+      if (cur && cur.rating === r) calPatch(calTipKey, { rating: null });
+      else calPatch(calTipKey, { rating: r });
       renderCalendar();
     });
+  });
+
+  markBtns.forEach((b) => {
+    b.addEventListener('click', () => {
+      if (!calTipKey) return;
+      const key = b.dataset.mark;
+      const cur = calEntry(calTipKey);
+      if (cur && cur.mark === key) calPatch(calTipKey, { mark: null });
+      else calPatch(calTipKey, { mark: key });
+      renderCalendar();
+    });
+  });
+
+  els.calendarBtn.addEventListener('click', openCalendar);
+  els.closeCalendarBtn.addEventListener('click', closeCalendar);
+  els.calendarOverlay.addEventListener('click', (e) => {
+    if (e.target === els.calendarOverlay) closeCalendar();
+  });
+  document.addEventListener('click', (e) => {
+    if (!calEls || !calEls.tooltip) return;
+    if (e.target.closest('.calendar-tooltip')) return;
+    if (e.target.closest('.calendar-day[data-key]')) return;
+    if (calTipPinned || calEls.tooltip.classList.contains('show')) calTipClose();
+  });
+  calEls.prevBtn.addEventListener('click', () => shiftCalendarMonth(-1));
+  calEls.nextBtn.addEventListener('click', () => shiftCalendarMonth(1));
+  calEls.todayBtn.addEventListener('click', goCalendarToday);
+  calEls.graphBtn.addEventListener('click', () => {
+    calGraphOpen = !calGraphOpen;
+    calEls.graph.classList.toggle('open', calGraphOpen);
+    calEls.graphBtn.textContent = calGraphOpen ? '📉 Hide graph' : '📈 Graph';
+    calEls.graphBtn.title = calGraphOpen ? 'Hide rating trend graph' : 'Show rating trend graph';
+    if (calGraphOpen) renderCalendarGraph();
+  });
+
+  calEls.grid.addEventListener('click', (e) => {
+    const cell = e.target.closest('.calendar-day[data-key]');
+    if (cell) selectCalendarDay(cell.dataset.key);
   });
 }
 
@@ -2944,7 +3018,7 @@ function bindUi() {
       els.settingsOverlay.classList.remove('open');
       els.focusOverlay.classList.remove('open');
       els.pomodoroOverlay.classList.remove('open');
-      els.calendarOverlay.classList.remove('open');
+      closeCalendar();
       closeVideoPlayer();
       closeMusicOverlay();
       return;
