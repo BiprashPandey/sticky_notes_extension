@@ -13,6 +13,8 @@
   cursor: grab;
   touch-action: none;
   font-family: var(--ui-font);
+  container-type: inline-size;
+  overflow: hidden;
 }
 
 .clock-label,
@@ -48,12 +50,26 @@
   letter-spacing: 0.5px;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 2px 12px rgba(2, 6, 23, 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clock.fixed .clock-time {
+  font-size: clamp(18px, 14cqw, 72px);
 }
 
 .clock-date {
   margin-top: clamp(1px, 0.2vh, 3px);
   font-size: clamp(10px, 0.7vw, 13.5px);
   color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clock.fixed .clock-date {
+  font-size: clamp(9px, 5.5cqw, 22px);
 }
 
 .tz-select {
@@ -67,5 +83,34 @@
   padding: clamp(5px, 0.5vh, 8px) clamp(6px, 0.6vw, 10px);
   outline: none;
   cursor: pointer;
+}
+
+.clock-resize {
+  position: absolute;
+  right: clamp(1px, 0.25vw, 4px);
+  bottom: clamp(1px, 0.25vw, 4px);
+  z-index: 2;
+  width: clamp(14px, 1.2vw, 22px);
+  height: clamp(14px, 1.2vw, 22px);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.clock-resize::after {
+  content: '';
+  position: absolute;
+  right: clamp(2px, 0.3vw, 5px);
+  bottom: clamp(2px, 0.3vw, 5px);
+  width: clamp(6px, 0.5vw, 10px);
+  height: clamp(6px, 0.5vw, 10px);
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  border-radius: 0 0 4px 0;
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.clock-resize:hover::after {
+  opacity: 1;
 }
 

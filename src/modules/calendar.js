@@ -6,6 +6,7 @@ import { layoutRow } from '../ui/layout.js';
 import {
   CALENDAR_KEY, CALENDAR_US_MONTHS, CALENDAR_BS_MONTHS, CALENDAR_BS_MONTHS_SHORT, CALENDAR_WEEKDAYS, CALENDAR_BS_ANCHOR_UTC, CALENDAR_BS_DAYS, CALENDAR_MARKS, CALENDAR_DAY_MS,
 } from '../shared/calendar-data.js';
+import { CALENDAR_ASPECT } from './layout-templates.js';
 
 
 
@@ -18,7 +19,6 @@ let calTipHideTimer = null;
 let calTipHost = null;
 const CAL_TIP_BACK_DAYS = 20;
 const CAL_TIP_FWD_DAYS = 5;
-const CAL_WIDGET_ASPECT = 1.15;
 
 function calPad(n) {
   return String(n).padStart(2, '0');
@@ -784,7 +784,7 @@ function renderCalendarWidget(item) {
     delete item.hpct;
     el.classList.add('fixed');
     saveState();
-  }, { aspect: CAL_WIDGET_ASPECT, disabled: () => item.pinned });
+  }, { aspect: CALENDAR_ASPECT, disabled: () => item.pinned });
   resizeHandle.addEventListener('dblclick', () => {
     delete item.w;
     delete item.h;

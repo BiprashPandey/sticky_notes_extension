@@ -176,7 +176,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   const tab = sender.tab;
   const senderHost = tab && tab.url ? hostOf(tab.url) : '';
   if (!tab) return;
-  const site = matchedSite(senderHost);
   if (msg && msg.type === 'FOCUS_INIT') {
     configReady.then(() => {
       if (!focusEnabled) {
@@ -204,25 +203,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     });
     return true;
   }
-  if (!site) return;
-  switch (msg && msg.type) {
-    case 'FOCUS_START':
-      startBlockade(site);
-      sendResponse({ ok: true });
-      return;
-    case 'FOCUS_EXTEND':
-      startBlockade(site);
-      sendResponse({ ok: true });
-      return;
-    case 'FOCUS_EXIT':
-      endBlockade(site, true);
-      sendResponse({ ok: true });
-      return;
-    case 'FOCUS_MOTIVATE':
-      openMotivation();
-      sendResponse({ ok: true });
-      return;
-  }
+  configReady.then(() => {
+    const s = matchedSite(senderHost);
+    if (!s) return;
+    switch (msg && msg.type) {
+      case 'FOCUS_START':
+        startBlockade(s);
+        sendResponse({ ok: true });
+        return;
+      case 'FOCUS_EXTEND':
+        startBlockade(s);
+        sendResponse({ ok: true });
+        return;
+      case 'FOCUS_EXIT':
+        endBlockade(s, true);
+        sendResponse({ ok: true });
+        return;
+      case 'FOCUS_MOTIVATE':
+        openMotivation();
+        sendResponse({ ok: true });
+        return;
+    }
+  });
+  return true;
 });
 
 async function focusTick() {

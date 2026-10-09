@@ -9,6 +9,7 @@ import { addTodo } from '../modules/todos.js';
 import { addRoutine } from '../modules/routines.js';
 import { addQuote } from '../modules/quotes.js';
 import { addCalendar } from '../modules/calendar.js';
+import { cancelLayoutSwitch } from '../modules/layout-presets.js';
 
 let layoutResizeTimer = null;
 
@@ -55,6 +56,7 @@ export function bindUi(addNote, addClock) {
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      cancelLayoutSwitch();
       els.settingsOverlay.classList.remove('open');
       els.focusOverlay.classList.remove('open');
       els.pomodoroOverlay.classList.remove('open');

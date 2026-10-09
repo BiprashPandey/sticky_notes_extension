@@ -77,6 +77,16 @@
       </section>
 
       <section class="field-group">
+        <span class="field-label">Dashboards</span>
+        <p class="field-hint">Each dashboard is its own world with a fixed set of widgets — switching never moves widgets between them. Opening one for the first time builds its starter widgets.</p>
+        <div class="layout-list" id="layoutList"></div>
+        <div class="btn-row layout-save-row">
+          <input class="text-input layout-name-input" id="layoutNameInput" type="text" placeholder="Name this dashboard…" maxlength="40">
+          <button type="button" class="ghost-btn layout-save-btn" id="saveLayoutBtn">Save current</button>
+        </div>
+      </section>
+
+      <section class="field-group">
         <span class="field-label">Data</span>
         <div class="btn-row">
           <button type="button" class="ghost-btn" id="exportBtn">Export</button>
@@ -86,6 +96,18 @@
         </div>
       </section>
     </aside>
+  </div>
+
+  <div class="switch-overlay" id="switchOverlay">
+    <div class="switch-card" role="dialog" aria-modal="true" aria-labelledby="switchTitle">
+      <h2 class="switch-title" id="switchTitle">Switch dashboard?</h2>
+      <p class="switch-message" id="switchMessage"></p>
+      <div class="btn-row switch-actions">
+        <button type="button" class="ghost-btn switch-save-btn" id="switchSaveBtn">Save &amp; switch</button>
+        <button type="button" class="ghost-btn switch-discard-btn" id="switchDiscardBtn">Discard</button>
+        <button type="button" class="ghost-btn switch-cancel-btn" id="switchCancelBtn">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <div class="focus-overlay" id="focusOverlay">

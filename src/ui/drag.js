@@ -26,6 +26,7 @@ export function makeDraggable(el, handle, onDrop, opts) {
     if (e.button !== 0) return;
     if (disabled && disabled()) return;
     if (e.target.closest('button, select, input, textarea, [contenteditable]')) return;
+    if (e.target.closest('.note-resize, .todo-resize, .quote-resize, .routine-resize, .cal-widget-resize, .clock-resize, .video-resize')) return;
     dragging = true;
     rect = el.getBoundingClientRect();
     startX = e.clientX;

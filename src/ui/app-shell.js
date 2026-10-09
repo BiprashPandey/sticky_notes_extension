@@ -10,6 +10,7 @@ import { renderQuotes } from '../modules/quotes.js';
 import { wallpaperById, applyWallpaper, restartCycleTimer } from '../modules/wallpaper.js';
 import { renderMusic } from '../modules/music.js';
 import { renderCalendarWidgets } from '../modules/calendar.js';
+import { syncActiveEntryFromLive } from '../modules/layout-presets.js';
 import { applyGlobalFont, syncSettingsUI } from '../modules/settings.js';
 
 export function addNote() {
@@ -98,6 +99,7 @@ export function renderChangedCollections(skip) {
 
 export function applyExternal(newValue) {
   setState(mergeState(newValue));
+  syncActiveEntryFromLive();
   applySavedLayout();
   renderEverything();
 }

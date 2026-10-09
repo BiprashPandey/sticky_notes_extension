@@ -2,6 +2,7 @@ import { els } from '../shared/dom.js';
 import { state, saveState } from '../shared/state.js';
 import { restartCycleTimer } from './wallpaper.js';
 import { exportData, importData, resetData } from './data.js';
+import { renderLayoutList } from './layout-presets.js';
 import { syncFocusSettingsUI } from './focus-settings.js';
 
 const FONTS = {
@@ -50,5 +51,6 @@ export function bindSettings() {
 export function syncSettingsUI() {
   els.fontInput.value = state.settings.font || 'default';
   els.cycleInput.value = String(state.settings.cycleMinutes || 0);
+  renderLayoutList();
   syncFocusSettingsUI();
 }

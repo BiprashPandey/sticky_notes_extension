@@ -53,7 +53,10 @@ async function fetchPlaylistNames() {
 async function listPackagedVideos() {
   const root = await new Promise((resolve, reject) => {
     try {
-      chrome.runtime.getPackageDirectoryEntry(resolve, reject);
+      chrome.runtime.getPackageDirectoryEntry((entry) => {
+        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+        else resolve(entry);
+      });
     } catch (e) {
       reject(e);
     }

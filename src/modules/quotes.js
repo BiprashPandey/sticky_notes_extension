@@ -11,6 +11,30 @@ export const QUOTE_DEFAULTS = [
   { text: 'Simplicity is the ultimate sophistication.', author: 'Leonardo da Vinci' },
 ];
 
+export const QUOTE_FONTS = {
+  serif:     { label: 'Serif',       stack: "Georgia, 'Times New Roman', serif" },
+  sans:      { label: 'Sans-Serif',  stack: "'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif" },
+  mono:      { label: 'Monospace',   stack: "'JetBrains Mono', 'Cascadia Code', 'Courier New', monospace" },
+  hand:      { label: 'Handwriting', stack: "'Segoe Print', 'Comic Sans MS', 'Bradley Hand', cursive" },
+  interface: { label: 'Interface',   stack: null },
+};
+
+export function quoteFontKey(quote) {
+  const k = quote && quote.font;
+  return k && QUOTE_FONTS[k] ? k : 'serif';
+}
+
+function quoteFontStack(key) {
+  const f = QUOTE_FONTS[key] || QUOTE_FONTS.serif;
+  return f.stack || 'var(--ui-font)';
+}
+
+function quoteFontOptionsHtml(selected) {
+  return Object.entries(QUOTE_FONTS)
+    .map(([k, f]) => '<option value="' + k + '"' + (k === selected ? ' selected' : '') + '>' + f.label + '</option>')
+    .join('');
+}
+
 export function renderQuotes() {
   els.widgets.querySelectorAll('.quote').forEach((q) => q.remove());
   for (const quote of state.quotes) renderQuote(quote);
@@ -39,10 +63,13 @@ function renderQuote(quote) {
     '</div>' +
     '<div class="quote-text" contenteditable="true" spellcheck="false" data-placeholder="Write your quote…">' + htmlFromText(quote.text) + '</div>' +
     '<input class="quote-author" type="text" value="' + escapeHtml(quote.author || '') + '" placeholder="— Attribution (optional)" title="Author (optional)">' +
+    '<select class="quote-font-select" title="Quote font">' + quoteFontOptionsHtml(quoteFontKey(quote)) + '</select>' +
     '<div class="quote-resize" title="Drag to resize — double-click to reset"></div>';
 
   const textEl = el.querySelector('.quote-text');
   const authorEl = el.querySelector('.quote-author');
+  const fontSelect = el.querySelector('.quote-font-select');
+  textEl.style.fontFamily = quoteFontStack(quoteFontKey(quote));
   if (quote.h || quote.hpct != null) textEl.style.overflowY = 'auto';
 
   textEl.addEventListener('input', () => {
@@ -52,6 +79,12 @@ function renderQuote(quote) {
 
   authorEl.addEventListener('input', () => {
     quote.author = authorEl.value;
+    saveState();
+  });
+
+  fontSelect.addEventListener('change', (e) => {
+    quote.font = e.target.value;
+    textEl.style.fontFamily = quoteFontStack(quoteFontKey(quote));
     saveState();
   });
 
@@ -110,7 +143,7 @@ function renderQuote(quote) {
 
 export function addQuote() {
   const d = QUOTE_DEFAULTS[Math.floor(Math.random() * QUOTE_DEFAULTS.length)];
-  const quote = { id: uid(), text: d.text, author: d.author, collapsed: false, pinned: false };
+  const quote = { id: uid(), text: d.text, author: d.author, font: 'serif', collapsed: false, pinned: false };
   state.quotes.push(quote);
   saveState();
   renderQuotes();

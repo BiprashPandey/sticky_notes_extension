@@ -1,7 +1,7 @@
 import { els } from '../shared/dom.js';
 import { state, saveState } from '../shared/state.js';
-import { bindPin, makeDraggable } from '../ui/drag.js';
-import { layoutRow } from '../ui/layout.js';
+import { bindPin, makeDraggable, makeResizable } from '../ui/drag.js';
+import { layoutRow, round3 } from '../ui/layout.js';
 import { clampPct, escapeHtml, pct } from '../shared/utils.js';
 
 export const TZ_PRESETS = [
@@ -99,10 +99,14 @@ export function renderClocks() {
 
 export function renderClock(clock) {
   const el = document.createElement('div');
-  el.className = 'clock';
+  el.className = 'clock' + (clock.h || clock.hpct != null ? ' fixed' : '');
   el.dataset.clockId = clock.id;
   el.style.left = clampPct(clock.x) + '%';
   el.style.top = clampPct(clock.y) + '%';
+  if (clock.wpct != null) el.style.width = clock.wpct + 'vw';
+  else if (clock.w) el.style.width = Math.max(150, clock.w) + 'px';
+  if (clock.hpct != null) el.style.height = clock.hpct + 'vh';
+  else if (clock.h) el.style.height = clock.h + 'px';
 
   el.innerHTML =
     '<div class="clock-header">' +
@@ -113,7 +117,8 @@ export function renderClock(clock) {
     '</div>' +
     '<div class="clock-time" data-clock-time>--:--:--</div>' +
     '<div class="clock-date" data-clock-date></div>' +
-    '<select class="tz-select" title="Change timezone">' + tzOptionsHtml(clock.timezone) + '</select>';
+    '<select class="tz-select" title="Change timezone">' + tzOptionsHtml(clock.timezone) + '</select>' +
+    '<div class="clock-resize" title="Drag to resize — double-click to reset"></div>';
 
   const timeEl = el.querySelector('[data-clock-time]');
   const dateEl = el.querySelector('[data-clock-date]');
@@ -143,6 +148,30 @@ export function renderClock(clock) {
   });
 
   bindPin(el, el.querySelector('.clock-pin-btn'), clock);
+
+  const resizeHandle = el.querySelector('.clock-resize');
+  makeResizable(el, resizeHandle, (w, h) => {
+    clock.w = Math.round(w);
+    clock.h = Math.round(h);
+    clock.wpct = round3((w / window.innerWidth) * 100);
+    clock.hpct = round3((h / window.innerHeight) * 100);
+    el.classList.add('fixed');
+    saveState();
+  }, {
+    minW: Math.max(150, Math.round(window.innerWidth * 0.1)),
+    minH: Math.max(80, Math.round(window.innerHeight * 0.12)),
+    disabled: () => clock.pinned,
+  });
+  resizeHandle.addEventListener('dblclick', () => {
+    delete clock.w;
+    delete clock.h;
+    delete clock.wpct;
+    delete clock.hpct;
+    el.style.width = '';
+    el.style.height = '';
+    el.classList.remove('fixed');
+    saveState();
+  });
 
   makeDraggable(el, el, () => {
     clock.x = pct(el.style.left);

@@ -12,3 +12,28 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+@property --rgb-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes today-rgb-spin {
+  to { --rgb-angle: 360deg; }
+}
+
+@keyframes today-rgb-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 0, 128, 0.55), 0 0 22px rgba(0, 200, 255, 0.35);
+  }
+  25% {
+    box-shadow: 0 0 10px rgba(255, 238, 0, 0.55), 0 0 22px rgba(51, 255, 87, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(0, 213, 255, 0.6), 0 0 22px rgba(122, 92, 255, 0.4);
+  }
+  75% {
+    box-shadow: 0 0 10px rgba(51, 255, 87, 0.55), 0 0 22px rgba(255, 47, 214, 0.4);
+  }
+}

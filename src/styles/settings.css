@@ -260,6 +260,155 @@
   opacity: 1;
 }
 
+/* ---------- Layout presets ---------- */
+
+.layout-list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 0.7vh, 10px);
+}
+
+.layout-item {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 0.8vw, 14px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: clamp(8px, 0.9vh, 12px) clamp(10px, 0.9vw, 15px);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.layout-item.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.layout-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.layout-name {
+  color: var(--text);
+  font-size: clamp(12px, 0.85vw, 15px);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layout-desc {
+  color: var(--text-dim);
+  font-size: clamp(10px, 0.7vw, 12.5px);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+.layout-badge {
+  display: inline-block;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #0b1220;
+  font-size: clamp(9px, 0.62vw, 11px);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 1px 8px;
+}
+
+.layout-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: clamp(5px, 0.5vw, 8px);
+}
+
+.layout-apply-btn {
+  flex: none;
+  padding: clamp(6px, 0.7vh, 9px) clamp(12px, 1.1vw, 18px);
+}
+
+.layout-del-btn,
+.layout-reset-btn {
+  flex: none;
+  padding: clamp(6px, 0.7vh, 9px) clamp(9px, 0.8vw, 13px);
+}
+
+.layout-save-row {
+  align-items: stretch;
+}
+
+.layout-name-input {
+  flex: 1.4;
+}
+
+.layout-save-btn {
+  flex: 1;
+  white-space: nowrap;
+}
+
+/* ---------- Dashboard switch confirm ---------- */
+
+.switch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.6);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.switch-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.switch-card {
+  width: min(92vw, 420px);
+  padding: clamp(18px, 2.4vh, 28px);
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow: var(--shadow);
+  font-family: var(--ui-font);
+  transform: translateY(10px) scale(0.98);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.switch-overlay.open .switch-card {
+  transform: none;
+}
+
+.switch-title {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: clamp(14px, 1.1vw, 19px);
+  font-weight: 700;
+}
+
+.switch-message {
+  margin: 0 0 16px;
+  color: var(--text-dim);
+  font-size: clamp(11.5px, 0.85vw, 14.5px);
+  line-height: 1.55;
+}
+
+.switch-actions .ghost-btn {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.switch-discard-btn {
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
 /* ---------- Data buttons ---------- */
 
 .btn-row {

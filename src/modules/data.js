@@ -2,6 +2,7 @@ import { els } from '../shared/dom.js';
 import { state, setState, mergeState, freshState, STORAGE_KEY, saveState } from '../shared/state.js';
 import { persistState } from '../shared/storage.js';
 import { captureLayout, applySavedLayout } from '../ui/layout.js';
+import { renderLayoutList, syncActiveEntryFromLive } from './layout-presets.js';
 
 let renderAll = () => {};
 
@@ -54,8 +55,11 @@ export function manualSave() {
     }
   }
   captureLayout();
+  // The live dashboard belongs to the active entry: keep its stored copy fresh.
+  syncActiveEntryFromLive();
   state.saveToken = (state.saveToken || 0) + 1;
   persistState();
+  renderLayoutList();
   els.saveBtn.classList.add('saved');
   els.saveBtn.textContent = '✓';
   if (saveFlashTimer) clearTimeout(saveFlashTimer);

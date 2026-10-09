@@ -8,6 +8,7 @@ import { initPomodoro } from '../modules/pomodoro.js';
 import { initCalendar } from '../modules/calendar.js';
 import { updateAllClocks } from '../modules/clocks.js';
 import { setRenderAll } from '../modules/data.js';
+import { setLayoutRenderer, bindLayoutUI, syncActiveEntryFromLive, ensureActiveEntryInitialized } from '../modules/layout-presets.js';
 import { bindSettings } from '../modules/settings.js';
 import { bindFocusSettings } from '../modules/focus-settings.js';
 import { bindUi } from './bindings.js';
@@ -20,11 +21,16 @@ export function init() {
     const stored = await chrome.storage.local.get(STORAGE_KEY);
     setState(mergeState(stored[STORAGE_KEY]));
     if (!hasWallpaper(state.wallpaper.id)) state.wallpaper.id = wallpaperById(state.wallpaper.id).id;
+    // Live collections are authoritative; a never-opened active entry builds now.
+    ensureActiveEntryInitialized();
+    syncActiveEntryFromLive();
 
     bindSettings();
     bindFocusSettings();
     bindUi(addNote, addClock);
     setRenderAll(renderEverything);
+    setLayoutRenderer(renderEverything);
+    bindLayoutUI();
     initPomodoro();
     initCalendar();
     initVideoPlayer();

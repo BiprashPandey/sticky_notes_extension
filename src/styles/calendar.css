@@ -203,12 +203,56 @@
 }
 
 .calendar-day.today {
-  border-style: solid;
-  border-color: var(--accent);
+  position: relative;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 0 10px rgba(255, 0, 128, 0.55), 0 0 22px rgba(0, 200, 255, 0.35);
+  animation: today-rgb-glow 3.2s linear infinite;
+  z-index: 1;
+}
+
+.calendar-day.today::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--rgb-angle, 0deg),
+    #ff0000,
+    #ff8a00,
+    #ffee00,
+    #33ff57,
+    #00d5ff,
+    #7a5cff,
+    #ff2fd6,
+    #ff0000
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: today-rgb-spin 3.2s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.calendar-day.today.selected {
+  /* box-shadow is animated by today-rgb-glow, so use outline for selection */
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
 }
 
 .calendar-day.today .calendar-day-en {
-  color: var(--accent);
+  color: #fff;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.8), 0 0 14px var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-day.today,
+  .calendar-day.today::before {
+    animation: none;
+  }
 }
 
 .calendar-day-en {

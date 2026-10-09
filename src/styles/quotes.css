@@ -71,8 +71,23 @@
   border-bottom: 1px dashed rgba(255, 255, 255, 0.35);
 }
 
+.quote-font-select {
+  width: 100%;
+  margin-top: clamp(6px, 0.8vh, 11px);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #e2e8f0;
+  font-family: var(--ui-font);
+  font-size: clamp(10.5px, 0.7vw, 14px);
+  padding: clamp(5px, 0.5vh, 8px) clamp(6px, 0.6vw, 10px);
+  outline: none;
+  cursor: pointer;
+}
+
 .quote.collapsed .quote-text,
-.quote.collapsed .quote-author {
+.quote.collapsed .quote-author,
+.quote.collapsed .quote-font-select {
   display: none;
 }
 
