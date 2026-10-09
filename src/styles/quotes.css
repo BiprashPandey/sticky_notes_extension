@@ -80,6 +80,17 @@
   font-family: var(--ui-font);
   font-size: clamp(10.5px, 0.7vw, 14px);
   user-select: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.quote:hover .quote-size-row,
+.quote:focus-within .quote-size-row {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .quote-size-slider {
