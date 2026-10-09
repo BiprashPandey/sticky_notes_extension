@@ -150,7 +150,7 @@ export function makeStarterWidget(kind, index, noteColor, slot) {
       return { id: uid(), title: '', tasks: [], collapsed: false, pinned: true };
     case 'quote': {
       const d = QUOTE_STARTERS[index % QUOTE_STARTERS.length];
-      return { id: uid(), text: d.text, author: d.author, fontSize: 17, collapsed: false, pinned: true };
+      return { id: uid(), text: d.text, author: d.author, color: 'glass', fontSize: 17, collapsed: false, pinned: true };
     }
     case 'routine':
       return { id: uid(), title: '', rows: [], collapsed: false, pinned: true };
@@ -182,7 +182,7 @@ export function defaultStarterCollections() {
     ],
     todos: [],
     quotes: [
-      { id: uid(), text: QUOTE_STARTERS[0].text, author: QUOTE_STARTERS[0].author, fontSize: 17, collapsed: false, pinned: false },
+      { id: uid(), text: QUOTE_STARTERS[0].text, author: QUOTE_STARTERS[0].author, color: 'glass', fontSize: 17, collapsed: false, pinned: false },
     ],
     routines: [],
     calendars: [],

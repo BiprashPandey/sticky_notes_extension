@@ -9,14 +9,22 @@
   padding: clamp(9px, 1vh, 16px) clamp(11px, 1.1vw, 20px);
   border-radius: var(--radius);
   border: 1px solid var(--glass-border);
-  background: var(--glass-strong);
+  background: var(--quote-bg, var(--glass-strong));
   backdrop-filter: blur(18px) saturate(1.35);
   box-shadow: var(--shadow);
   pointer-events: auto;
   cursor: grab;
   touch-action: none;
   font-family: var(--ui-font);
+  --quote-bg: var(--glass-strong);
 }
+
+.quote.color-yellow { --quote-bg: rgba(250, 204, 21, 0.26); }
+.quote.color-pink   { --quote-bg: rgba(244, 114, 182, 0.26); }
+.quote.color-green  { --quote-bg: rgba(74, 222, 128, 0.26); }
+.quote.color-blue   { --quote-bg: rgba(96, 165, 250, 0.26); }
+.quote.color-purple { --quote-bg: rgba(167, 139, 250, 0.26); }
+.quote.color-orange { --quote-bg: rgba(251, 146, 60, 0.26); }
 
 .quote-header {
   display: flex;

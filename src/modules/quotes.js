@@ -15,6 +15,12 @@ export const QUOTE_MIN_SIZE = 12;
 export const QUOTE_MAX_SIZE = 32;
 export const QUOTE_DEFAULT_SIZE = 17;
 
+const QUOTE_COLORS = ['glass', 'yellow', 'pink', 'green', 'blue', 'purple', 'orange'];
+
+function quoteColor(quote) {
+  return quote && QUOTE_COLORS.includes(quote.color) ? quote.color : 'glass';
+}
+
 export function quoteFontSize(quote) {
   const n = Number(quote && quote.fontSize);
   if (!isFinite(n)) return QUOTE_DEFAULT_SIZE;
@@ -30,7 +36,7 @@ export function renderQuotes() {
 
 function renderQuote(quote) {
   const el = document.createElement('div');
-  el.className = 'quote' + (quote.collapsed ? ' collapsed' : '') + (quote.h || quote.hpct ? ' fixed' : '');
+  el.className = 'quote color-' + quoteColor(quote) + (quote.collapsed ? ' collapsed' : '') + (quote.h || quote.hpct ? ' fixed' : '');
   el.dataset.quoteId = quote.id;
   el.style.left = clampPct(quote.x) + '%';
   el.style.top = clampPct(quote.y) + '%';
@@ -41,6 +47,7 @@ function renderQuote(quote) {
 
   el.innerHTML =
     '<div class="quote-header">' +
+      '<button type="button" class="icon-btn quote-color-btn" title="Change color">🎨</button>' +
       '<button type="button" class="icon-btn quote-pin-btn" title="Pin">📌</button>' +
       '<span class="quote-mark" title="Quote">❝</span>' +
       '<span class="note-spacer"></span>' +
@@ -88,6 +95,13 @@ function renderQuote(quote) {
 
   bindPin(el, el.querySelector('.quote-pin-btn'), quote);
 
+  el.querySelector('.quote-color-btn').addEventListener('click', () => {
+    const i = QUOTE_COLORS.indexOf(quoteColor(quote));
+    quote.color = QUOTE_COLORS[(i + 1) % QUOTE_COLORS.length];
+    el.className = el.className.replace(/color-\w+/, 'color-' + quote.color);
+    saveState();
+  });
+
   el.querySelector('.quote-delete-btn').addEventListener('click', () => {
     state.quotes = state.quotes.filter((q) => q.id !== quote.id);
     el.remove();
@@ -132,7 +146,7 @@ function renderQuote(quote) {
 
 export function addQuote() {
   const d = QUOTE_DEFAULTS[Math.floor(Math.random() * QUOTE_DEFAULTS.length)];
-  const quote = { id: uid(), text: d.text, author: d.author, fontSize: QUOTE_DEFAULT_SIZE, collapsed: false, pinned: false };
+  const quote = { id: uid(), text: d.text, author: d.author, color: 'glass', fontSize: QUOTE_DEFAULT_SIZE, collapsed: false, pinned: false };
   state.quotes.push(quote);
   saveState();
   renderQuotes();
