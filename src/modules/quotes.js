@@ -11,28 +11,14 @@ export const QUOTE_DEFAULTS = [
   { text: 'Simplicity is the ultimate sophistication.', author: 'Leonardo da Vinci' },
 ];
 
-export const QUOTE_FONTS = {
-  serif:     { label: 'Serif',       stack: "Georgia, 'Times New Roman', serif" },
-  sans:      { label: 'Sans-Serif',  stack: "'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif" },
-  mono:      { label: 'Monospace',   stack: "'JetBrains Mono', 'Cascadia Code', 'Courier New', monospace" },
-  hand:      { label: 'Handwriting', stack: "'Segoe Print', 'Comic Sans MS', 'Bradley Hand', cursive" },
-  interface: { label: 'Interface',   stack: null },
-};
+export const QUOTE_MIN_SIZE = 12;
+export const QUOTE_MAX_SIZE = 32;
+export const QUOTE_DEFAULT_SIZE = 17;
 
-export function quoteFontKey(quote) {
-  const k = quote && quote.font;
-  return k && QUOTE_FONTS[k] ? k : 'serif';
-}
-
-function quoteFontStack(key) {
-  const f = QUOTE_FONTS[key] || QUOTE_FONTS.serif;
-  return f.stack || 'var(--ui-font)';
-}
-
-function quoteFontOptionsHtml(selected) {
-  return Object.entries(QUOTE_FONTS)
-    .map(([k, f]) => '<option value="' + k + '"' + (k === selected ? ' selected' : '') + '>' + f.label + '</option>')
-    .join('');
+export function quoteFontSize(quote) {
+  const n = Number(quote && quote.fontSize);
+  if (!isFinite(n)) return QUOTE_DEFAULT_SIZE;
+  return Math.min(QUOTE_MAX_SIZE, Math.max(QUOTE_MIN_SIZE, Math.round(n)));
 }
 
 export function renderQuotes() {
@@ -63,13 +49,16 @@ function renderQuote(quote) {
     '</div>' +
     '<div class="quote-text" contenteditable="true" spellcheck="false" data-placeholder="Write your quote…">' + htmlFromText(quote.text) + '</div>' +
     '<input class="quote-author" type="text" value="' + escapeHtml(quote.author || '') + '" placeholder="— Attribution (optional)" title="Author (optional)">' +
-    '<select class="quote-font-select" title="Quote font">' + quoteFontOptionsHtml(quoteFontKey(quote)) + '</select>' +
+    '<label class="quote-size-row" title="Quote text size"><span aria-hidden="true">A-</span>' +
+      '<input type="range" class="quote-size-slider" min="' + QUOTE_MIN_SIZE + '" max="' + QUOTE_MAX_SIZE + '" step="1" value="' + quoteFontSize(quote) + '" aria-label="Quote text size">' +
+    '<span aria-hidden="true">A+</span></label>' +
     '<div class="quote-resize" title="Drag to resize — double-click to reset"></div>';
 
   const textEl = el.querySelector('.quote-text');
   const authorEl = el.querySelector('.quote-author');
-  const fontSelect = el.querySelector('.quote-font-select');
-  textEl.style.fontFamily = quoteFontStack(quoteFontKey(quote));
+  const sizeSlider = el.querySelector('.quote-size-slider');
+  if (quote.font !== undefined) delete quote.font;
+  textEl.style.fontSize = quoteFontSize(quote) + 'px';
   if (quote.h || quote.hpct != null) textEl.style.overflowY = 'auto';
 
   textEl.addEventListener('input', () => {
@@ -82,9 +71,9 @@ function renderQuote(quote) {
     saveState();
   });
 
-  fontSelect.addEventListener('change', (e) => {
-    quote.font = e.target.value;
-    textEl.style.fontFamily = quoteFontStack(quoteFontKey(quote));
+  sizeSlider.addEventListener('input', (e) => {
+    quote.fontSize = Number(e.target.value);
+    textEl.style.fontSize = quoteFontSize(quote) + 'px';
     saveState();
   });
 
@@ -143,7 +132,7 @@ function renderQuote(quote) {
 
 export function addQuote() {
   const d = QUOTE_DEFAULTS[Math.floor(Math.random() * QUOTE_DEFAULTS.length)];
-  const quote = { id: uid(), text: d.text, author: d.author, font: 'serif', collapsed: false, pinned: false };
+  const quote = { id: uid(), text: d.text, author: d.author, fontSize: QUOTE_DEFAULT_SIZE, collapsed: false, pinned: false };
   state.quotes.push(quote);
   saveState();
   renderQuotes();

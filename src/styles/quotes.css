@@ -36,7 +36,7 @@
   min-height: clamp(18px, 2.4vh, 36px);
   outline: none;
   color: var(--text);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--ui-font);
   font-size: clamp(14px, 1.05vw, 20px);
   line-height: 1.55;
   word-break: break-word;
@@ -71,23 +71,27 @@
   border-bottom: 1px dashed rgba(255, 255, 255, 0.35);
 }
 
-.quote-font-select {
-  width: 100%;
+.quote-size-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 0.6vw, 10px);
   margin-top: clamp(6px, 0.8vh, 11px);
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.75);
-  color: #e2e8f0;
+  color: var(--text-dim);
   font-family: var(--ui-font);
   font-size: clamp(10.5px, 0.7vw, 14px);
-  padding: clamp(5px, 0.5vh, 8px) clamp(6px, 0.6vw, 10px);
-  outline: none;
+  user-select: none;
+}
+
+.quote-size-slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
 .quote.collapsed .quote-text,
 .quote.collapsed .quote-author,
-.quote.collapsed .quote-font-select {
+.quote.collapsed .quote-size-row {
   display: none;
 }
 
