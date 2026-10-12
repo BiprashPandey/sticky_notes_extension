@@ -12,6 +12,7 @@ import { renderMusic } from '../modules/music.js';
 import { renderCalendarWidgets } from '../modules/calendar.js';
 import { syncActiveEntryFromLive } from '../modules/layout-presets.js';
 import { applyGlobalFont, syncSettingsUI } from '../modules/settings.js';
+import { refreshMcqVisibility } from '../modules/mcq.js';
 
 export function addNote() {
   const n = state.notes.length;
@@ -53,6 +54,7 @@ function collectionPrints(st) {
     routines: JSON.stringify(st.routines),
     quotes: JSON.stringify(st.quotes),
     music: JSON.stringify(st.music),
+    mcq: JSON.stringify(st.mcq),
   };
 }
 
@@ -102,4 +104,5 @@ export function applyExternal(newValue) {
   syncActiveEntryFromLive();
   applySavedLayout();
   renderEverything();
+  refreshMcqVisibility();
 }

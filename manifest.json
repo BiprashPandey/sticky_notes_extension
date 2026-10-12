@@ -22,7 +22,8 @@
         "<all_urls>"
       ],
       "js": [
-        "src/content/focus.js"
+        "src/content/focus.js",
+        "src/content/mcq.js"
       ],
       "run_at": "document_idle",
       "all_frames": false

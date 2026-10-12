@@ -11,6 +11,8 @@ import { setRenderAll } from '../modules/data.js';
 import { setLayoutRenderer, bindLayoutUI, syncActiveEntryFromLive, ensureActiveEntryInitialized } from '../modules/layout-presets.js';
 import { bindSettings } from '../modules/settings.js';
 import { bindFocusSettings } from '../modules/focus-settings.js';
+import { bindMcqSettings } from '../modules/mcq-settings.js';
+import { initMcq } from '../modules/mcq.js';
 import { bindUi } from './bindings.js';
 import { addNote, addClock, renderEverything, applyExternal } from './app-shell.js';
 
@@ -27,6 +29,7 @@ export function init() {
 
     bindSettings();
     bindFocusSettings();
+    bindMcqSettings();
     bindUi(addNote, addClock);
     setRenderAll(renderEverything);
     setLayoutRenderer(renderEverything);
@@ -45,6 +48,7 @@ export function init() {
 
     applySavedLayout();
     renderEverything();
+    initMcq();
     setInterval(updateAllClocks, 1000);
     if (new URLSearchParams(location.search).get('reels') === '1') openVideoPlayer();
     document.body.classList.add('ready');

@@ -5,6 +5,7 @@ let focusSites = [];
 let focusMinutes = 5;
 let focusEnabled = true;
 let focusPlayMixes = true;
+let focusExemptTerms = [];
 let blockades = {}; // { [site]: { endAt, warned } }
 let configReady = Promise.resolve();
 
@@ -74,7 +75,19 @@ function isMixPlaylist(url) {
 }
 
 function shouldExemptFocusUrl(url) {
-  return focusPlayMixes && isMixPlaylist(url);
+  if (!focusPlayMixes) return false;
+  if (isMixPlaylist(url)) return true;
+  return matchesCustomExemptTerm(url);
+}
+
+function matchesCustomExemptTerm(url) {
+  if (!focusExemptTerms.length) return false;
+  const u = String(url || '').toLowerCase();
+  if (!u) return false;
+  for (let i = 0; i < focusExemptTerms.length; i++) {
+    if (u.indexOf(focusExemptTerms[i]) !== -1) return true;
+  }
+  return false;
 }
 
 function isFocusHost(hostname, url) {
@@ -87,6 +100,9 @@ function applyFocusConfig(cfg) {
   const f = cfg && cfg.focus;
   focusEnabled = f ? f.enabled !== false : true;
   focusPlayMixes = f ? f.playMixes !== false : true;
+  focusExemptTerms = f && Array.isArray(f.exemptTerms)
+    ? [...new Set(f.exemptTerms.filter((x) => typeof x === 'string').map((x) => x.trim().toLowerCase()).filter(Boolean))].slice(0, 50)
+    : [];
   if (f && Array.isArray(f.sites)) {
     focusSites = f.sites.filter((x) => typeof x === 'string' && x.trim());
   } else if (f && f.url) {
@@ -145,21 +161,21 @@ function notifySiteAll(site, type, data) {
 function startBlockade(site) {
   blockades[site] = { endAt: Date.now() + focusMinutes * 60 * 1000, warned: false };
   saveBlockades();
-  notifySite(site, 'FOCUS_ACTIVE', { remainingMs: focusMinutes * 60 * 1000, playMixes: focusPlayMixes });
+  notifySite(site, 'FOCUS_ACTIVE', { remainingMs: focusMinutes * 60 * 1000, playMixes: focusPlayMixes, exemptTerms: focusExemptTerms.slice() });
 }
 
 function clearAllBlockades() {
   const sites = Object.keys(blockades);
   blockades = {};
   saveBlockades();
-  for (const site of sites) notifySiteAll(site, 'FOCUS_HIDE', { playMixes: focusPlayMixes });
-  for (const site of focusSites) notifySiteAll(normalizeDomain(site), 'FOCUS_HIDE', { playMixes: focusPlayMixes });
+  for (const site of sites) notifySiteAll(site, 'FOCUS_HIDE', { playMixes: focusPlayMixes, exemptTerms: focusExemptTerms.slice() });
+  for (const site of focusSites) notifySiteAll(normalizeDomain(site), 'FOCUS_HIDE', { playMixes: focusPlayMixes, exemptTerms: focusExemptTerms.slice() });
 }
 
 async function endBlockade(site, closeNow) {
   delete blockades[site];
   saveBlockades();
-  notifySiteAll(site, 'FOCUS_HIDE', { playMixes: focusPlayMixes });
+  notifySiteAll(site, 'FOCUS_HIDE', { playMixes: focusPlayMixes, exemptTerms: focusExemptTerms.slice() });
   if (closeNow) {
     const tabs = await siteTabs(site);
     for (const t of tabs) {
@@ -199,6 +215,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         remainingMs: b ? Math.max(0, b.endAt - Date.now()) : 0,
         minutes: focusMinutes,
         playMixes: focusPlayMixes,
+        exemptTerms: focusExemptTerms.slice(),
       });
     });
     return true;
@@ -238,7 +255,7 @@ async function focusTick() {
       await endBlockade(site, true);
     } else if (rem <= WARN_LEAD_MS && !b.warned) {
       b.warned = true;
-      notifySite(site, 'FOCUS_WARN', { remainingMs: rem, minutes: focusMinutes, playMixes: focusPlayMixes });
+      notifySite(site, 'FOCUS_WARN', { remainingMs: rem, minutes: focusMinutes, playMixes: focusPlayMixes, exemptTerms: focusExemptTerms.slice() });
       saveBlockades();
     }
   }
@@ -255,7 +272,22 @@ function setupFocusTicking() {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   const ch = changes['dashboardStateV1'];
-  if (ch) applyFocusConfig(ch.newValue);
+  if (ch) {
+    applyFocusConfig(ch.newValue);
+    // Push fresh exemption terms to open tabs so newly-matching URLs hide immediately.
+    try {
+      chrome.tabs.query({}).then((tabs) => {
+        for (const t of tabs) {
+          if (t.id == null || !t.url) continue;
+          if (!matchedSite(hostOf(t.url))) continue;
+          chrome.tabs.sendMessage(t.id, { type: 'FOCUS_CONFIG', playMixes: focusPlayMixes, exemptTerms: focusExemptTerms.slice() }).catch(() => {});
+          if (shouldExemptFocusUrl(t.url)) {
+            chrome.tabs.sendMessage(t.id, { type: 'FOCUS_HIDE', playMixes: focusPlayMixes, exemptTerms: focusExemptTerms.slice() }).catch(() => {});
+          }
+        }
+      }).catch(() => {});
+    } catch (e) { /* ignore */ }
+  }
 });
 
 export function initFocusEngine() {

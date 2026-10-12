@@ -72,6 +72,18 @@
       </section>
 
       <section class="field-group">
+        <span class="field-label">MCQ mode</span>
+        <label class="switch-row">
+          <span class="switch">
+            <input type="checkbox" id="mcqEnabledInput">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </span>
+          <span class="switch-label" id="mcqEnabledLabel">Off</span>
+        </label>
+        <p class="field-hint" id="mcqStatsLine">One question per new tab. Answer, skip, or dismiss.</p>
+      </section>
+
+      <section class="field-group">
         <span class="field-label">Wallpaper</span>
         <div class="wp-gallery" id="wpGallery"></div>
       </section>
@@ -148,7 +160,13 @@
           </span>
           <span class="switch-label" id="focusPlayMixesLabel">On</span>
         </label>
-        <p class="field-hint">Whenever on, YouTube mixes that keep playing in the background are exempt from Focus mode. A mix is any YouTube page whose URL contains "index=".</p>
+        <p class="field-hint">Whenever on, YouTube mixes that keep playing in the background are exempt from Focus mode. A mix is any YouTube page whose URL contains "index=". Custom terms below add more exemptions.</p>
+      </section>
+
+      <section class="field-group">
+        <label class="field-label" for="focusExemptInput">Exempt URL terms</label>
+        <textarea class="text-input focus-input" id="focusExemptInput" rows="3" placeholder="lofi&#10;meditation&#10;index=" spellcheck="false"></textarea>
+        <p class="field-hint">One term per line. Any blocked page whose URL contains one of these terms (case-insensitive) is exempt from Focus mode while “Play mixes” is on.</p>
       </section>
     </div>
   </div>
@@ -284,6 +302,28 @@
         <button type="button" class="video-nav-btn" id="musicToggleBtn" title="Play / pause">⏸</button>
         <button type="button" class="video-nav-btn" id="musicNextBtn" title="Next song">⏭</button>
         <button type="button" class="icon-btn music-stop-btn" id="musicStopBtn" title="Stop">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mcq-overlay" id="mcqOverlay">
+    <div class="mcq-card" id="mcqCard" role="dialog" aria-label="Practice question">
+      <button type="button" class="icon-btn mcq-close" id="mcqCloseBtn" title="Dismiss for this tab">✕</button>
+      <div class="mcq-head" id="mcqHead" title="Drag to move — double-click to reset position">
+        <button type="button" class="icon-btn mcq-color-btn" id="mcqColorBtn" title="Change color">🎨</button>
+        <span class="mcq-badge">MCQ</span>
+        <span class="mcq-meta" id="mcqMeta"></span>
+        <span class="mcq-count" id="mcqCount"></span>
+      </div>
+      <p class="mcq-question" id="mcqQuestion"></p>
+      <div class="mcq-options" id="mcqOptions"></div>
+      <p class="mcq-feedback" id="mcqFeedback" hidden></p>
+      <p class="mcq-full" id="mcqFull" hidden></p>
+      <button type="button" class="mcq-more" id="mcqMoreBtn" hidden>Show more</button>
+      <div class="mcq-foot">
+        <button type="button" class="ghost-btn" id="mcqPrevBtn" title="Previous question">◀ Prev</button>
+        <button type="button" class="ghost-btn" id="mcqSkipBtn">Skip</button>
+        <button type="button" class="ghost-btn" id="mcqNextBtn" title="Next question">Next ▶</button>
       </div>
     </div>
   </div>

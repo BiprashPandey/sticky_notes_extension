@@ -10,6 +10,7 @@ import { addRoutine } from '../modules/routines.js';
 import { addQuote } from '../modules/quotes.js';
 import { addCalendar } from '../modules/calendar.js';
 import { cancelLayoutSwitch } from '../modules/layout-presets.js';
+import { hideMcq } from '../modules/mcq.js';
 
 let layoutResizeTimer = null;
 
@@ -38,6 +39,7 @@ export function bindUi(addNote, addClock) {
     els.powerBtn.classList.toggle('active', hiding);
     els.powerBtn.title = hiding ? 'Show all widgets' : 'Hide all widgets';
     for (const o of overlays) o.classList.remove('open');
+    hideMcq();
     closeVideoPlayer();
     closeMusicOverlay();
     if (hiding) {
@@ -60,6 +62,7 @@ export function bindUi(addNote, addClock) {
       els.settingsOverlay.classList.remove('open');
       els.focusOverlay.classList.remove('open');
       els.pomodoroOverlay.classList.remove('open');
+      hideMcq();
       closeCalendar();
       closeVideoPlayer();
       closeMusicOverlay();

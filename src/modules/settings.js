@@ -4,6 +4,7 @@ import { restartCycleTimer } from './wallpaper.js';
 import { exportData, importData, resetData } from './data.js';
 import { renderLayoutList } from './layout-presets.js';
 import { syncFocusSettingsUI } from './focus-settings.js';
+import { syncMcqSettingsUI } from './mcq-settings.js';
 
 const FONTS = {
   default: { label: 'JetBrains Mono', stack: "'JetBrains Mono', 'Cascadia Code', 'Courier New', monospace" },
@@ -53,4 +54,5 @@ export function syncSettingsUI() {
   els.cycleInput.value = String(state.settings.cycleMinutes || 0);
   renderLayoutList();
   syncFocusSettingsUI();
+  syncMcqSettingsUI();
 }

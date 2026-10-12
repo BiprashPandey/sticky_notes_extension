@@ -6,6 +6,19 @@
 
   let focusDurationMin = 5;
   let allowMixes = true;
+  let exemptTerms = [];
+
+  function normalizeTerms(list) {
+    if (!Array.isArray(list)) return [];
+    const out = [];
+    const seen = {};
+    for (let i = 0; i < list.length; i++) {
+      const t = String(list[i] || '').trim().toLowerCase();
+      if (t && !seen[t]) { seen[t] = 1; out.push(t); }
+      if (out.length >= 50) break;
+    }
+    return out;
+  }
 
   function isMixPage() {
     const host = location.hostname.toLowerCase().replace(/^www\./, '');
@@ -14,6 +27,19 @@
     if (q.indexOf('index=') !== -1) return true;
     if (q.indexOf('start_radio=1') !== -1) return true;
     return /[?&]list=RD/i.test(q);
+  }
+
+  function isCustomExempt() {
+    if (!exemptTerms.length) return false;
+    const u = String(location.href || '').toLowerCase();
+    for (let i = 0; i < exemptTerms.length; i++) {
+      if (u.indexOf(exemptTerms[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  function isExempt() {
+    return allowMixes && (isMixPage() || isCustomExempt());
   }
 
   const HOST_ID = 'focus-mode-host';
@@ -163,6 +189,7 @@
     if (!res || !res.isTarget) return;
     if (res.minutes) focusDurationMin = res.minutes;
     if (typeof res.playMixes === 'boolean') allowMixes = res.playMixes;
+    if (res.exemptTerms) exemptTerms = normalizeTerms(res.exemptTerms);
     if (!res.active) showInitial();
   }
 
@@ -175,11 +202,16 @@
   chrome.runtime.onMessage.addListener((msg) => {
     if (!msg || !msg.type) return;
     if (typeof msg.playMixes === 'boolean') allowMixes = msg.playMixes;
+    if (msg.exemptTerms) exemptTerms = normalizeTerms(msg.exemptTerms);
+    if (msg.type === 'FOCUS_CONFIG') {
+      if (isExempt()) hide();
+      return;
+    }
     if (msg.type === 'FOCUS_ACTIVE') {
-      if (allowMixes && isMixPage()) { hide(); return; }
+      if (isExempt()) { hide(); return; }
       hide();
     } else if (msg.type === 'FOCUS_WARN') {
-      if (allowMixes && isMixPage()) { hide(); return; }
+      if (isExempt()) { hide(); return; }
       showWarn(msg);
     } else if (msg.type === 'FOCUS_HIDE') {
       hide();
@@ -190,7 +222,7 @@
   setInterval(() => {
     if (location.href !== lastHref) {
       lastHref = location.href;
-      if (allowMixes && isMixPage()) hide();
+      if (isExempt()) hide();
     }
   }, 800);
 })();

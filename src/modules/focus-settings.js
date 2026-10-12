@@ -6,6 +6,7 @@ export function updatePlayMixesToggleUi(on) {
   els.focusPlayMixesLabel.textContent = on ? 'On' : 'Off';
   els.focusPlayMixesLabel.classList.toggle('on', on);
   els.focusPlayMixesLabel.classList.toggle('off', !on);
+  if (els.focusExemptInput) els.focusExemptInput.disabled = !on;
 }
 
 export function updateFocusToggleUi(on) {
@@ -15,6 +16,7 @@ export function updateFocusToggleUi(on) {
   els.focusSitesInput.disabled = !on;
   els.focusMinutesInput.disabled = !on;
   els.focusPlayMixesInput.disabled = !on;
+  if (els.focusExemptInput) els.focusExemptInput.disabled = !on || !els.focusPlayMixesInput.checked;
   els.focusLed.classList.toggle('on', on);
 }
 
@@ -24,6 +26,9 @@ export function syncFocusSettingsUI() {
   const focusEnabled = state.focus ? state.focus.enabled !== false : true;
   els.focusEnabledInput.checked = focusEnabled;
   els.focusPlayMixesInput.checked = state.focus ? state.focus.playMixes !== false : true;
+  if (els.focusExemptInput) {
+    els.focusExemptInput.value = (state.focus && Array.isArray(state.focus.exemptTerms) ? state.focus.exemptTerms : []).join('\n');
+  }
   updatePlayMixesToggleUi(els.focusPlayMixesInput.checked);
   updateFocusToggleUi(focusEnabled);
 }
@@ -52,8 +57,23 @@ export function bindFocusSettings() {
   els.focusPlayMixesInput.addEventListener('change', (e) => {
     state.focus.playMixes = e.target.checked;
     updatePlayMixesToggleUi(e.target.checked);
+    updateFocusToggleUi(state.focus.enabled !== false);
     manualSave();
   });
+
+  if (els.focusExemptInput) {
+    els.focusExemptInput.addEventListener('change', (e) => {
+      const terms = [...new Set(
+        e.target.value
+          .split(/[\n,]/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      )].slice(0, 50);
+      state.focus.exemptTerms = terms;
+      e.target.value = terms.join('\n');
+      manualSave();
+    });
+  }
 
   els.focusBtn.addEventListener('click', () => els.focusOverlay.classList.add('open'));
   els.closeFocusBtn.addEventListener('click', () => els.focusOverlay.classList.remove('open'));

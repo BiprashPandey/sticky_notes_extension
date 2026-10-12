@@ -1,0 +1,218 @@
+/* ---------- MCQ mode card (dismissible, non-blocking) ---------- */
+
+.mcq-overlay {
+  position: fixed;
+  right: clamp(12px, 1.6vw, 28px);
+  bottom: clamp(12px, 2vh, 28px);
+  z-index: 60;
+  width: min(92vw, clamp(320px, 30vw, 460px));
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px) scale(0.98);
+  transition: opacity 0.22s ease, visibility 0.22s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.mcq-overlay.open {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+}
+
+.mcq-card {
+  position: relative;
+  max-height: min(78vh, 640px);
+  overflow: auto;
+  padding: clamp(14px, 1.8vh, 22px) clamp(14px, 1.4vw, 22px);
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  background: var(--mcq-bg, rgba(15, 23, 42, 0.92));
+  backdrop-filter: blur(26px) saturate(1.4);
+  box-shadow: var(--shadow);
+  font-family: var(--ui-font);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1vh, 14px);
+}
+
+.mcq-card.color-yellow { --mcq-bg: rgba(250, 204, 21, 0.32); }
+.mcq-card.color-pink   { --mcq-bg: rgba(244, 114, 182, 0.32); }
+.mcq-card.color-green  { --mcq-bg: rgba(74, 222, 128, 0.32); }
+.mcq-card.color-blue   { --mcq-bg: rgba(96, 165, 250, 0.32); }
+.mcq-card.color-purple { --mcq-bg: rgba(167, 139, 250, 0.32); }
+.mcq-card.color-orange { --mcq-bg: rgba(251, 146, 60, 0.32); }
+
+.mcq-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.mcq-head:active {
+  cursor: grabbing;
+}
+
+.mcq-overlay.dragging {
+  transition: none;
+}
+
+.mcq-color-btn {
+  flex: none;
+}
+
+.mcq-badge {
+  flex: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #0b1220;
+  font-size: clamp(9px, 0.62vw, 11px);
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 2px 9px;
+}
+
+.mcq-meta {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: clamp(10px, 0.7vw, 12.5px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mcq-count {
+  flex: none;
+  color: var(--text-dim);
+  font-size: clamp(10px, 0.7vw, 12.5px);
+}
+
+.mcq-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: var(--text);
+}
+
+.mcq-question {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(12.5px, 0.9vw, 15.5px);
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+.mcq-options {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 0.8vh, 10px);
+}
+
+.mcq-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  border: 1px solid var(--glass-border);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: clamp(11.5px, 0.82vw, 14.5px);
+  line-height: 1.5;
+  padding: clamp(8px, 1vh, 12px) clamp(10px, 0.9vw, 14px);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.mcq-option:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--accent);
+}
+
+.mcq-option:disabled {
+  cursor: default;
+  opacity: 0.92;
+}
+
+.mcq-option.correct {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.14);
+}
+
+.mcq-option.wrong {
+  border-color: #f87171;
+  background: rgba(248, 113, 113, 0.13);
+}
+
+.mcq-key {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.mcq-option.correct .mcq-key {
+  background: #4ade80;
+  color: #0b1220;
+}
+
+.mcq-option.wrong .mcq-key {
+  background: #f87171;
+  color: #0b1220;
+}
+
+.mcq-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mcq-feedback {
+  margin: 0;
+  font-size: clamp(11.5px, 0.82vw, 14px);
+  font-weight: 700;
+}
+
+.mcq-feedback.ok { color: #4ade80; }
+.mcq-feedback.bad { color: #fca5a5; }
+
+.mcq-full {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: clamp(11px, 0.78vw, 13.5px);
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.mcq-more {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-family: var(--ui-font);
+  font-size: clamp(11px, 0.78vw, 13px);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mcq-foot {
+  display: flex;
+  gap: 8px;
+}
+
+.mcq-foot .ghost-btn {
+  padding-left: 10px;
+  padding-right: 10px;
+}

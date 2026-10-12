@@ -44,13 +44,25 @@ export function freshState() {
     activeLayoutId: DEFAULT_LAYOUT_ID,
     ...liveFromCollections(home.widgets),
     music: { playlists: [] },
-    focus: { enabled: true, sites: [], minutes: 5, playMixes: true },
+    focus: { enabled: true, sites: [], minutes: 5, playMixes: true, exemptTerms: [] },
+    mcq: { enabled: false, lastIndex: -1, answered: 0, correct: 0, color: 'glass', x: null, y: null },
   };
 }
+
+export const MCQ_COLORS = ['glass', 'yellow', 'pink', 'green', 'blue', 'purple', 'orange'];
 
 export function clampMinutes(m) {
   const n = Number(m);
   return isFinite(n) && n >= 1 ? Math.min(180, Math.round(n)) : 5;
+}
+
+export function sanitizeMcqColor(c) {
+  return MCQ_COLORS.includes(c) ? c : 'glass';
+}
+
+function sanitizePctOrNull(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(95, Math.max(0, n)) : null;
 }
 
 function sanitizeLayoutEntry(raw) {
@@ -155,6 +167,18 @@ export function mergeState(stored) {
         : (s.focus && s.focus.url ? [s.focus.url] : []),
       minutes: clampMinutes(s.focus && s.focus.minutes),
       playMixes: s.focus ? s.focus.playMixes !== false : true,
+      exemptTerms: Array.isArray(s.focus && s.focus.exemptTerms)
+        ? [...new Set(s.focus.exemptTerms.filter((x) => typeof x === 'string').map((x) => x.trim()).filter(Boolean))].slice(0, 50)
+        : [],
+    },
+    mcq: {
+      enabled: !!(s.mcq && s.mcq.enabled),
+      lastIndex: Number.isFinite(Number(s.mcq && s.mcq.lastIndex)) ? Math.max(-1, Math.floor(Number(s.mcq.lastIndex))) : -1,
+      answered: Math.max(0, Math.floor(Number((s.mcq && s.mcq.answered) || 0)) || 0),
+      correct: Math.max(0, Math.floor(Number((s.mcq && s.mcq.correct) || 0)) || 0),
+      color: sanitizeMcqColor(s.mcq && s.mcq.color),
+      x: sanitizePctOrNull(s.mcq && s.mcq.x),
+      y: sanitizePctOrNull(s.mcq && s.mcq.y),
     },
   };
 }
