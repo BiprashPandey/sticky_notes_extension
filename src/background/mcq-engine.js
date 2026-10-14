@@ -3,8 +3,38 @@ import { MCQ_QUESTIONS } from '../modules/mcq-questions.js';
 const STORAGE_KEY = 'dashboardStateV1';
 const VALID_COLORS = ['glass', 'yellow', 'pink', 'green', 'blue', 'purple', 'orange'];
 
+// Display checkbox key -> stored question difficulty value.
+// Must stay in sync with src/shared/state.js MCQ_DIFFICULTY_MAP.
+const DIFFICULTY_MAP = {
+  basic: 'Intermediate',
+  intermediate: 'Advanced',
+  advanced: 'Expert',
+};
+const DIFFICULTY_KEYS = ['basic', 'intermediate', 'advanced'];
+
 function sanitizeColor(c) {
   return VALID_COLORS.includes(c) ? c : 'glass';
+}
+
+function sanitizeDifficulties(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const out = {};
+  for (const k of DIFFICULTY_KEYS) {
+    out[k] = src[k] === undefined ? true : !!src[k];
+  }
+  if (!out.basic && !out.intermediate && !out.advanced) {
+    out.basic = out.intermediate = out.advanced = true;
+  }
+  return out;
+}
+
+function allowedSet(difficulties) {
+  const d = sanitizeDifficulties(difficulties);
+  const allowed = new Set();
+  for (const k of DIFFICULTY_KEYS) {
+    if (d[k]) allowed.add(DIFFICULTY_MAP[k]);
+  }
+  return allowed;
 }
 
 function sanitizePctOrNull(v) {
@@ -30,36 +60,52 @@ async function writeState(stored) {
   }
 }
 
-function nextIndex(last) {
-  const n = MCQ_QUESTIONS.length;
-  if (!n) return -1;
-  const base = Number.isFinite(Number(last)) ? Math.floor(Number(last)) : -1;
-  return (base + 1) % n;
-}
-
-function prevIndex(last) {
+function stepIndex(last, dir, allowed) {
   const n = MCQ_QUESTIONS.length;
   if (!n) return -1;
   const raw = Number(last);
-  const base = Number.isFinite(raw) ? Math.floor(raw) : 0;
-  return (base - 1 + n) % n;
+  const base = Number.isFinite(raw) ? Math.floor(raw) : (dir < 0 ? 0 : -1);
+  for (let step = 1; step <= n; step++) {
+    const cand = (base + dir * step + n * step) % n;
+    const d = MCQ_QUESTIONS[cand] && MCQ_QUESTIONS[cand].difficulty;
+    if (allowed.has(d)) return cand;
+  }
+  return -1;
+}
+
+function filteredPosition(idx, allowed) {
+  let pos = 0;
+  let found = -1;
+  let total = 0;
+  for (let i = 0; i < MCQ_QUESTIONS.length; i++) {
+    const d = MCQ_QUESTIONS[i] && MCQ_QUESTIONS[i].difficulty;
+    if (!allowed.has(d)) continue;
+    if (i === idx) found = pos;
+    pos++;
+  }
+  total = pos;
+  return { position: found, total };
 }
 
 // Steps rotation (dir = +1 forward, -1 backward) and returns the question payload.
 // Used for initial load, Skip, Previous, and Next (skip/answer scoring is separate).
+// Rotation stays within the user's selected difficulties.
 async function takeStep(dir) {
   const stored = (await readState()) || {};
   const mcq = stored.mcq && typeof stored.mcq === 'object' ? stored.mcq : {};
   if (!mcq.enabled || !MCQ_QUESTIONS.length) return { enabled: false };
-  const idx = dir < 0 ? prevIndex(mcq.lastIndex) : nextIndex(mcq.lastIndex);
+  const allowed = allowedSet(mcq.difficulties);
+  const step = dir < 0 ? -1 : 1;
+  const idx = stepIndex(mcq.lastIndex, step, allowed);
   const q = MCQ_QUESTIONS[idx];
   if (!q) return { enabled: false };
+  const { position, total } = filteredPosition(idx, allowed);
   stored.mcq = { ...mcq, lastIndex: idx };
   await writeState(stored);
   return {
     enabled: true,
-    index: idx,
-    total: MCQ_QUESTIONS.length,
+    index: position >= 0 ? position : idx,
+    total,
     color: sanitizeColor(mcq.color),
     x: sanitizePctOrNull(mcq.x),
     y: sanitizePctOrNull(mcq.y),

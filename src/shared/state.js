@@ -45,11 +45,48 @@ export function freshState() {
     ...liveFromCollections(home.widgets),
     music: { playlists: [] },
     focus: { enabled: true, sites: [], minutes: 5, playMixes: true, exemptTerms: [] },
-    mcq: { enabled: false, lastIndex: -1, answered: 0, correct: 0, color: 'glass', x: null, y: null },
+    mcq: { enabled: false, lastIndex: -1, answered: 0, correct: 0, color: 'glass', x: null, y: null, difficulties: { basic: true, intermediate: true, advanced: true } },
   };
 }
 
 export const MCQ_COLORS = ['glass', 'yellow', 'pink', 'green', 'blue', 'purple', 'orange'];
+
+// Display checkbox key -> stored question difficulty value.
+// Bank uses Intermediate/Advanced/Expert; UI shows Basic/Intermediate/Advanced.
+export const MCQ_DIFFICULTY_MAP = {
+  basic: 'Intermediate',
+  intermediate: 'Advanced',
+  advanced: 'Expert',
+};
+
+export const MCQ_DIFFICULTY_KEYS = ['basic', 'intermediate', 'advanced'];
+
+export function sanitizeMcqDifficulties(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const out = {};
+  for (const k of MCQ_DIFFICULTY_KEYS) {
+    // Missing keys default to true so old stored states migrate to "all on".
+    // Explicit false is preserved; anything else coerces to boolean.
+    out[k] = src[k] === undefined ? true : src[k] !== false;
+    // Coerce truthy non-boolean (e.g. "true", 1) to true, falsy to false,
+    // except undefined handled above.
+    if (src[k] !== undefined) out[k] = !!src[k];
+  }
+  // Never allow an empty selection to persist; fall back to all-on.
+  if (!out.basic && !out.intermediate && !out.advanced) {
+    out.basic = out.intermediate = out.advanced = true;
+  }
+  return out;
+}
+
+export function mcqAllowedDifficulties(difficulties) {
+  const d = sanitizeMcqDifficulties(difficulties);
+  const allowed = new Set();
+  for (const k of MCQ_DIFFICULTY_KEYS) {
+    if (d[k]) allowed.add(MCQ_DIFFICULTY_MAP[k]);
+  }
+  return allowed;
+}
 
 export function clampMinutes(m) {
   const n = Number(m);
@@ -179,6 +216,7 @@ export function mergeState(stored) {
       color: sanitizeMcqColor(s.mcq && s.mcq.color),
       x: sanitizePctOrNull(s.mcq && s.mcq.x),
       y: sanitizePctOrNull(s.mcq && s.mcq.y),
+      difficulties: sanitizeMcqDifficulties(s.mcq && s.mcq.difficulties),
     },
   };
 }

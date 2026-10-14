@@ -1,5 +1,5 @@
 import { els } from '../shared/dom.js';
-import { state, MCQ_COLORS, sanitizeMcqColor } from '../shared/state.js';
+import { state, MCQ_COLORS, sanitizeMcqColor, mcqAllowedDifficulties } from '../shared/state.js';
 import { clampPct, pct } from '../shared/utils.js';
 import { makeDraggable } from '../ui/drag.js';
 import { manualSave } from './data.js';
@@ -8,8 +8,41 @@ import { MCQ_QUESTIONS } from './mcq-questions.js';
 let currentIndex = -1;
 let answered = false;
 
+function allowedSet() {
+  return mcqAllowedDifficulties(state && state.mcq ? state.mcq.difficulties : null);
+}
+
+function filteredIndices() {
+  const allowed = allowedSet();
+  const out = [];
+  for (let i = 0; i < MCQ_QUESTIONS.length; i++) {
+    const d = MCQ_QUESTIONS[i] && MCQ_QUESTIONS[i].difficulty;
+    if (allowed.has(d)) out.push(i);
+  }
+  return out;
+}
+
+function stepFiltered(from, dir) {
+  const n = MCQ_QUESTIONS.length;
+  if (!n) return -1;
+  const allowed = allowedSet();
+  const base = Number.isFinite(Number(from)) ? Math.floor(Number(from)) : (dir < 0 ? 0 : -1);
+  for (let step = 1; step <= n; step++) {
+    const cand = (base + dir * step + n * step) % n;
+    const d = MCQ_QUESTIONS[cand] && MCQ_QUESTIONS[cand].difficulty;
+    if (allowed.has(d)) return cand;
+  }
+  return -1;
+}
+
+function isIndexAllowed(index) {
+  const q = MCQ_QUESTIONS[index];
+  if (!q) return false;
+  return allowedSet().has(q.difficulty);
+}
+
 function isEnabled() {
-  return !!(state && state.mcq && state.mcq.enabled) && MCQ_QUESTIONS.length > 0;
+  return !!(state && state.mcq && state.mcq.enabled) && filteredIndices().length > 0;
 }
 
 function shortExplanation(full) {
@@ -73,8 +106,11 @@ export function nextMcqIndex() {
   const n = MCQ_QUESTIONS.length;
   if (!n) return -1;
   const last = Number(state.mcq && state.mcq.lastIndex);
-  const base = Number.isFinite(last) ? last : -1;
-  return (base + 1) % n;
+  return stepFiltered(Number.isFinite(last) ? last : -1, 1);
+}
+
+export function filteredCount() {
+  return filteredIndices().length;
 }
 
 export function renderMcq(index) {
@@ -102,7 +138,12 @@ export function renderMcq(index) {
   // (Next no longer waits for an answer).
   if (els.mcqPrevBtn) els.mcqPrevBtn.hidden = false;
   if (els.mcqNextBtn) els.mcqNextBtn.hidden = false;
-  if (els.mcqCount) els.mcqCount.textContent = `${index + 1} / ${MCQ_QUESTIONS.length}`;
+  if (els.mcqCount) {
+    const filt = filteredIndices();
+    const pos = filt.indexOf(index);
+    const total = filt.length || MCQ_QUESTIONS.length;
+    els.mcqCount.textContent = pos >= 0 ? `${pos + 1} / ${total}` : `${index + 1} / ${total}`;
+  }
   if (!els.mcqOptions) return;
   els.mcqOptions.innerHTML = '';
   q.options.forEach((opt, i) => {
@@ -164,7 +205,7 @@ export function answerMcq(pick) {
 
 export function showMcq() {
   if (!isEnabled() || !els.mcqOverlay) return;
-  if (currentIndex < 0) renderMcq(nextMcqIndex());
+  if (currentIndex < 0 || !isIndexAllowed(currentIndex)) renderMcq(nextMcqIndex());
   applyMcqColor();
   applyMcqPosition();
   els.mcqOverlay.classList.add('open');
@@ -174,11 +215,39 @@ export function hideMcq() {
   if (els.mcqOverlay) els.mcqOverlay.classList.remove('open');
 }
 
+export function refreshMcqDifficulties() {
+  // Called when difficulty checkboxes change: keep current Q if still
+  // allowed (refreshing only the counter), else jump to first allowed Q.
+  if (!isEnabled()) {
+    hideMcq();
+    return;
+  }
+  if (currentIndex < 0 || !isIndexAllowed(currentIndex)) {
+    const next = nextMcqIndex();
+    if (next >= 0) {
+      if (state.mcq) {
+        state.mcq.lastIndex = next;
+        manualSave();
+      }
+      renderMcq(next);
+    }
+    showMcq();
+    return;
+  }
+  // Still allowed: refresh counter without losing answer state.
+  if (els.mcqCount) {
+    const filt = filteredIndices();
+    const pos = filt.indexOf(currentIndex);
+    if (pos >= 0) els.mcqCount.textContent = `${pos + 1} / ${filt.length}`;
+  }
+  showMcq();
+}
+
 export function refreshMcqVisibility() {
   // Called after external storage sync so all tabs agree on on/off.
   if (!els.mcqOverlay) return;
   if (isEnabled()) {
-    if (currentIndex < 0) renderMcq(nextMcqIndex());
+    if (currentIndex < 0 || !isIndexAllowed(currentIndex)) renderMcq(nextMcqIndex());
     showMcq();
   } else {
     hideMcq();
@@ -186,8 +255,10 @@ export function refreshMcqVisibility() {
 }
 
 export function skipMcq() {
-  // Skip advances rotation without scoring.
-  const next = (currentIndex + 1 + MCQ_QUESTIONS.length) % MCQ_QUESTIONS.length;
+  // Skip advances rotation without scoring, staying within selected difficulties.
+  const from = currentIndex >= 0 ? currentIndex : Number(state.mcq && state.mcq.lastIndex);
+  const next = stepFiltered(from, 1);
+  if (next < 0) return;
   if (state.mcq) state.mcq.lastIndex = next;
   manualSave();
   renderMcq(next);
@@ -207,8 +278,11 @@ export function goMcq(dir) {
   // Navigate freely without scoring: dir = +1 (next) or -1 (previous).
   const n = MCQ_QUESTIONS.length;
   if (!n) return;
+  const step = dir < 0 ? -1 : 1;
   const base = currentIndex >= 0 ? currentIndex : nextMcqIndex();
-  const target = (base + dir + n) % n;
+  if (base < 0) return;
+  const target = stepFiltered(base, step);
+  if (target < 0) return;
   advancePersisted();
   if (state.mcq) state.mcq.lastIndex = target;
   manualSave();
@@ -252,6 +326,9 @@ export function initMcq() {
     } else {
       hideMcq();
     }
+  });
+  document.addEventListener('mcq:difficulties', () => {
+    refreshMcqDifficulties();
   });
   document.addEventListener('keydown', (e) => {
     if (!els.mcqOverlay?.classList.contains('open')) return;
